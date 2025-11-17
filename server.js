@@ -77,6 +77,24 @@ async function ensureDB() {
     await pool.query(createSql);
     console.log("🗄️ Tabell skapad (eller fanns redan)");
 
+    // --- DEBUG 1: vilken databas och användare? ---
+    const info = await pool.query(`
+        SELECT current_database() AS db,
+               current_user      AS "user",
+               inet_server_addr()::text AS host,
+               inet_server_port()       AS port
+    `);
+    console.log("🔍 DB INFO:", info.rows[0]);
+
+    // --- DEBUG 2: vilka tabeller finns? ---
+    const tables = await pool.query(`
+        SELECT table_schema, table_name
+        FROM information_schema.tables
+        WHERE table_type = 'BASE TABLE'
+        ORDER BY table_schema, table_name
+    `);
+    console.log("📋 TABLES:", tables.rows);
+
     // 2. Lägg till saknade kolumner om de inte finns
     async function addColumnIfMissing(column, type) {
         try {
