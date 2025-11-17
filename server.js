@@ -409,11 +409,25 @@ console.log("🔥 PAYLOAD (fixad):", payload);
         const similar = await findSimilarSong(payload);
 
         if (similar) {
-            console.log("🎯 Liknande låt hittad → återanvänd");
+            console.log("🎯 Liknande låt hittad → återanvänd", {
+                id: similar.id,
+                audio_url: similar.audio_url,
+                public_url: similar.public_url
+            });
+
+            // Normalize response: prefer stored local `audio_url`, fallback to `public_url`.
+            // Some older DB rows might have stored the S3 link in `audio_url` or vice versa.
+            const audioUrl = similar.audio_url || similar.public_url || null;
+
+            if (!audioUrl) {
+                console.warn("⚠️ Hittad rad saknar ljud-URL — skickar fel till klienten");
+                return res.status(500).json({ success: false, error: "Found DB row without audio URL" });
+            }
+
             return res.json({
                 success: true,
-                audioUrl: similar.audio_url,
-                publicUrl: similar.public_url
+                audioUrl,
+                publicUrl: similar.public_url || audioUrl
             });
         }
 

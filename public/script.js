@@ -267,10 +267,23 @@ async function generateSong() {
       currentAudio = null;
   }
 
-  const audio = new Audio(data.audioUrl);
-  audio.loop = true;
+    const audio = new Audio(data.audioUrl);
+    audio.loop = true;
 
-  await new Promise(r => audio.addEventListener("canplaythrough", r, { once: true }));
+    // If loading the returned `audioUrl` fails (CORS/S3/old DB rows),
+    // try the `publicUrl` as a fallback.
+    let _triedPublic = false;
+    audio.addEventListener("error", () => {
+      if (!_triedPublic && data.publicUrl) {
+        console.warn("Audio load failed for audioUrl, attempting publicUrl fallback");
+        _triedPublic = true;
+        audio.src = data.publicUrl;
+        // `canplaythrough` promise below will resolve when this succeeds
+        audio.load();
+      }
+    });
+
+    await new Promise(r => audio.addEventListener("canplaythrough", r, { once: true }));
   currentAudio = audio;
 
   // ensure needles stop/reset when playback ends or is paused
