@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8" />
+  <title>EPA-dunk-generator – prototyp</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body>
+  <h1>Skapa din egen EPA-dunk</h1>
+
+  <div id="status"></div>
+
+  <form id="form-settings">
+    <div>
+      <label for="tempo-select">Tempo (BPM):</label>
+      <select id="tempo-select"></select>
+    </div>
+
+    <div>
+      <label for="drum-type">Typ av trummor:</label>
+      <select id="drum-type"></select>
+    </div>
+
+    <div>
+      <label for="bass-type">Typ av bas:</label>
+      <select id="bass-type"></select>
+    </div>
+
+    <div>
+      <label for="lead-type">Gitarr / lead:</label>
+      <select id="lead-type"></select>
+    </div>
+
+    <div>
+      <label for="lyrics-type">Typ av text / tema:</label>
+      <select id="lyrics-type"></select>
+    </div>
+
+    <button type="submit" id="btn-generate">Generera EPA-dunk</button>
+  </form>
+
+  <div style="margin-top: 20px;">
+    <button id="btn-play" disabled>Spela / pausa</button>
+    <button id="btn-reset">Börja om</button>
+  </div>
+
+  <p id="now-playing"></p>
+
+  <script src="script.js"></script>
+</body>
+
+</html>

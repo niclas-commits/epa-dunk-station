@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="sv">
+<head>
+  <meta charset="UTF-8">
+  <title>EPA-Dunk Generator</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div id="dashboard-wrapper">
+  <div id="dashboard">
+
+    <!-- Bakgrund -->
+    <img id="panel-bg" src="images/background.webp" alt="EPA panel">
+
+    <!-- Nålar -->
+    <img class="needle2" id="needle-tempo"    src="images/needle_tempo.png" alt="Tempo nål">
+    <img class="needle"  id="needle-typ"      src="images/needle_lead.png"  alt="Typ nål">
+    <img class="needle"  id="needle-energi"   src="images/needle_lead.png"  alt="Energi nål">
+    <img class="needle2" id="needle-trummor"  src="images/needle_trummor.png" alt="Trummor nål">
+
+    <!-- Lampor -->
+    <img id="lamp1" class="lamp-img" src="images/lamp1_off.jpg">
+    <img id="lamp2" class="lamp-img" src="images/lamp2_off.jpg">
+    <img id="lamp3" class="lamp-img" src="images/lamp3_off.jpg">
+    <img id="lamp4" class="lamp-img" src="images/lamp4_off.jpg">
+    <img id="lamp5" class="lamp-img" src="images/lamp5_off.jpg">
+    <img id="lamp6" class="lamp-img" src="images/lamp6_off.jpg">
+    <img id="lamp7" class="lamp-img" src="images/lamp7_off.jpg">
+    <img id="lamp8" class="lamp-img" src="images/lamp8_off.jpg">
+    <img id="lamp9" class="lamp-img" src="images/lamp9_off.jpg">
+
+    <!-- Strömbrytare -->
+    <img id="btn_bassplus" class="toggle-btn" src="images/button1_off.jpg">
+    <img id="btn_dist"      class="toggle-btn" src="images/button2_off.jpg">
+
+    <!-- Hotspots -->
+    <div class="hotspot tempo"   data-group="tempo"></div>
+    <div class="hotspot typ"     data-group="typ"></div>
+    <div class="hotspot energi"  data-group="energi"></div>
+    <div class="hotspot trummor" data-group="trummor"></div>
+
+    <!-- Ignition -->
+    <img id="ignition" src="images/ignition.png" alt="Ignition key">
+
+    <!-- Status -->
+    <div id="status"></div>
+    <div id="now-playing"></div>
+
+    <!-- QR -->
+    <div id="qr-box">
+      <div id="qrcode"></div>
+      <p id="qr-label"></p>
+    </div>
+
+    <!-- Prompt för dev -->
+    <pre id="prompt-preview"></pre>
+    <button id="btn-show-prompt">Visa prompt</button>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="script.js"></script>
+
+</body>
+</html>

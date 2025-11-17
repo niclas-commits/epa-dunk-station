@@ -1,0 +1,250 @@
+/* ============================================================
+   GLOBALT
+============================================================ */
+html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: #000;
+    font-family: Arial, sans-serif;
+}
+
+/* Debug Prompt-box (utvecklarläge) */
+#prompt-preview {
+    display: none !important;
+    /* hidden debug prompt */
+    position: absolute;
+    left: 800px;
+    top: 88px;
+    width: 520px;
+    max-height: 400px;
+    padding: 10px;
+    background: rgba(0, 0, 0, 0.8);
+    color: #f5f5f5;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    white-space: pre-wrap;
+    z-index: 999;
+}
+
+#btn-show-prompt {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+    /* hidden helper button */
+    position: absolute;
+    left: 500px;          /* välj själv */
+    top: 1000px;           /* välj själv */
+    padding: 10px 20px;
+    font-size: 16px;
+    background: #222;
+    color: #fff;
+    border: 2px solid #fff;
+    border-radius: 8px;
+    cursor: pointer;
+    z-index: 2000;        /* över allt annat */
+}
+
+/* ============================================================
+   DASHBOARD WRAPPER — 16:9 LAYOUT
+============================================================ */
+#dashboard-wrapper {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100vw;
+    height: 56.25vw;          /* 16:9 proportion */
+    max-width: 177.78vh;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+/* Själva panelen (1920×1080 design) */
+#dashboard {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    transform-origin: top left;
+    transform: scale(var(--scale));
+}
+
+/* ============================================================
+   BAKGRUND
+============================================================ */
+#panel-bg {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    z-index: 1;
+}
+
+/* ============================================================
+   NÅLAR
+============================================================ */
+
+.needle, .needle2 {
+    position: absolute;
+    transform-origin: 50% 50%;
+    transform: translate(-50%, -50%) rotate(0deg);
+    transition: transform 0.4s ease-out;
+    z-index: 200; /* ovanför hotspots */
+}
+
+/* Stor & liten */
+.needle  { width: 380px; height: 380px; }
+.needle2 { width: 260px; height: 260px; }
+
+/* Nålpunkter (EXAKTA positioner) */
+#needle-tempo   { left: 280px;  top: 485px; }
+#needle-typ     { left: 722px;  top: 425px; }
+#needle-energi  { left: 1195px; top: 425px; }
+#needle-trummor { left: 1645px; top: 470px; }
+
+/* ============================================================
+   HOTSPOTS (klickytor ovanpå mätarna)
+============================================================ */
+.hotspot {
+    position: absolute;
+    width: 450px;
+    height: 450px;
+    border-radius: 50%;
+    cursor: pointer;
+    transform: translate(-50%, -50%);
+    z-index: 300; /* ovanför nålar, under lampor */
+
+    /* UNDER UTVECKLING:
+       background: rgba(255,255,255,0.12);
+       border: 1px solid rgba(255,255,255,0.3);
+    */
+}
+
+
+/* Hotspotcentrum = mittpunkterna */
+.tempo   { left: 280px;  top: 485px; }
+.typ     { left: 722px;  top: 425px; }
+.energi  { left: 1195px; top: 425px; }
+.trummor { left: 1645px; top: 470px; }
+
+/* ============================================================
+   LAMPOR (9 st)
+============================================================ */
+
+.lamp-img {
+    position: absolute;
+    width: 95px;
+    height: auto;
+    pointer-events: none;
+    z-index: 350;
+}
+
+#lamp1 { left: 358px; top: 717px; }
+#lamp2 { left: 472px; top: 717px; }
+#lamp3 { left: 586px; top: 717px; }
+#lamp4 { left: 700px; top: 717px; }
+#lamp5 { left: 1008px; top: 717px; }
+#lamp6 { left: 1122px; top: 717px; }
+#lamp7 { left: 1236px; top: 717px; }
+#lamp8 { left: 1350px; top: 717px; }
+#lamp9 { left: 1464px; top: 717px; }
+
+/* ============================================================
+   KNAPPAR BAS+ & DIST
+============================================================ */
+
+#btn_bassplus,
+#btn_dist {
+    position: absolute;
+    width: 95px;
+    height: auto;
+    pointer-events: auto;
+    cursor: pointer;
+    z-index: 400; /* över lampor */
+}
+
+#btn_bassplus { left: 50px; top: 710px; }
+#btn_dist     { left: 190px; top: 710px; }
+
+/* ============================================================
+   TÄNDNINGSNYCKEL
+============================================================ */
+
+#ignition {
+    position: absolute;
+    right: 80px;
+    bottom: 80px;
+    width: 160px;
+    transform-origin: 50% 50%;
+    transform: rotate(0deg);
+    cursor: pointer;
+    transition: transform 0.2s ease-out;
+    z-index: 500;
+}
+
+#ignition:hover {
+    filter: brightness(1.2);
+}
+
+/* ============================================================
+   STATUS / TEXT / QR-KOD
+============================================================ */
+
+#status {
+    position: absolute;
+    top: 200px;
+    left: 115px;
+    font-size: 20px;
+    color: white;
+    z-index: 600;
+}
+
+#now-playing {
+    position: absolute;
+    top: 190px;
+    left: 100px;
+    font-size: 16px;
+    color: white;
+    z-index: 600;
+}
+
+#qr-box {
+    position: absolute;
+    right: 0px;
+    top: 100px;
+    width: 180px;
+    background: rgba(0,0,0,0.7);
+    padding: 8px;
+    text-align: center;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.3);
+    z-index: 600;
+}
+
+#qrcode {
+    width: 160px;
+    height: 160px;
+    margin: 0 auto 4px;
+}
+
+#qr-label {
+    color: #fff;
+    margin: 0;
+    font-size: 12px;
+}
+
+/* ============================================================
+   HIDDEN BUTTONS
+============================================================ */
+
+#btn-generate,
+#btn-play,
+#btn-reset {
+    display: none !important;
+}
