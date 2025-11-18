@@ -185,14 +185,20 @@ function describeLead(e, t, dist) {
 // PROMPT BUILDER
 function buildStablePrompt(payload) {
     const tempo = Number(payload.tempo);
+    // Accept both _value and plain keys for backward compatibility
+    const typ = payload.typ_value ?? payload.typ;
+    const energi = payload.energi_value ?? payload.energi;
+    const trummor = payload.trummor_value ?? payload.trummor;
+    const bassPlus = payload.bassPlus;
+    const dist = payload.dist;
 
-    const typTxt     = describeType(payload.typ);
-    const energiTxt  = describeEnergy(payload.energi);
-    const trummorTxt = describeDrums(payload.trummor, payload.energi);
-    const bassTxt    = describeBass(payload.energi, payload.typ, payload.bassPlus, payload.dist);
-    const leadTxt    = describeLead(payload.energi, payload.typ, payload.dist);
+    const typTxt     = describeType(typ);
+    const energiTxt  = describeEnergy(energi);
+    const trummorTxt = describeDrums(trummor, energi);
+    const bassTxt    = describeBass(energi, typ, bassPlus, dist);
+    const leadTxt    = describeLead(energi, typ, dist);
 
-    return `
+    const prompt = `
 Create a 30-second instrumental EPA-dunk inspired track.
 
 Tempo: ${tempo} BPM.
@@ -221,6 +227,11 @@ The track MUST reflect the descriptions accurately.
 No vocals.
 Loop-friendly arrangement.
     `.trim();
+
+    // Debug log for prompt builder
+    console.log("[PromptBuilder] Input:", { tempo, typ, energi, trummor, bassPlus, dist });
+    console.log("[PromptBuilder] Output:\n" + prompt);
+    return prompt;
 }
 
 // ==========================================================
