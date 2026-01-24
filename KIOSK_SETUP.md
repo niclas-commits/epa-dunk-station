@@ -7,7 +7,7 @@ Komplett guide för att köra EPA-Dunk Station i kioskmiljö på Ubuntu NUC med 
 - Ubuntu 20.04 eller senare
 - NUC med i5 processor
 - Arduino MKR Zero ansluten via USB
-- Internetanslutning (för Railway deployment eller lokalt)
+- Internetanslutning (för Railway deployment)
 
 ---
 
@@ -68,37 +68,24 @@ git clone https://github.com/niclas-commits/epa-dunk-station.git .
 npm install
 ```
 
-### 3.3. Skapa miljövariabler
+### 3.3. Skapa miljövariabler (valfritt)
 
 ```bash
 nano .env
 ```
 
-Lägg till (anpassa efter ditt setup):
+Lägg till endast om Arduino-porten inte hittas automatiskt:
 
 ```env
-# Om du kör servern lokalt
-PORT=3000
-DATABASE_URL=postgresql://user:password@host:port/database
-
-# AWS S3
-AWS_REGION=eu-north-1
-AWS_ACCESS_KEY_ID=din_access_key
-AWS_SECRET_ACCESS_KEY=din_secret_key
-AWS_S3_BUCKET=ditt_bucket_namn
-
-# Stable Audio API
-STABILITY_API_KEY=din_stability_api_key
-
-# Arduino (om du kör lokalt)
+# Arduino port (endast om porten inte hittas automatiskt)
 ARDUINO_PORT=/dev/ttyACM0  # eller /dev/ttyUSB0, kolla med: ls /dev/tty*
 ```
 
-**OBS:** Om du använder Railway för servern, behöver du bara Arduino-relaterade variabler här.
+**OBS:** Alla andra miljövariabler (DATABASE_URL, AWS, STABILITY_API_KEY) konfigureras på Railway, inte lokalt.
 
 ---
 
-## Steg 4: Konfigurera Serial Bridge (för lokalt)
+## Steg 4: Konfigurera Serial Bridge
 
 ### 4.1. Lägg till användare i dialout-gruppen (för USB-serial access)
 
@@ -248,13 +235,13 @@ chmod +x /opt/epa-dunk-station/get-ngrok-url.sh
 
 ## Steg 6: Installera och Konfigurera Webbläsare (Kiosk Mode)
 
-### 5.1. Installera Chromium
+### 6.1. Installera Chromium
 
 ```bash
 sudo apt install -y chromium-browser
 ```
 
-### 5.2. Skapa kiosk startup script
+### 6.2. Skapa kiosk startup script
 
 ```bash
 sudo nano /opt/epa-dunk-station/start-kiosk.sh
@@ -268,20 +255,16 @@ Lägg till:
 # Vänta på att systemet är klart
 sleep 5
 
-# Starta serial bridge i bakgrunden (om lokalt)
-cd /opt/epa-dunk-station
-npm run bridge > /var/log/epa-bridge.log 2>&1 &
-
-# Vänta lite för att bridge ska starta
-sleep 3
+# Disable screen saver
+xset s off
+xset -dpms
+xset s noblank
 
 # Starta Chromium i kiosk-läge
-# Använd Railway URL eller localhost om du kör lokalt
 CHROMIUM_FLAGS="--kiosk --noerrdialogs --disable-infobars --no-first-run --disable-features=TranslateUI --autoplay-policy=no-user-gesture-required"
 
-# Välj URL (ändra till din Railway URL eller localhost:3000)
+# Använd din Railway URL (ändra till din faktiska URL)
 KIOSK_URL="https://din-app.up.railway.app"
-# ELLER för lokalt: KIOSK_URL="http://localhost:3000"
 
 chromium-browser $CHROMIUM_FLAGS "$KIOSK_URL" &
 ```
@@ -404,7 +387,7 @@ sudo systemctl enable epa-kiosk.service
 
 Om du vill att systemet ska logga in automatiskt:
 
-### 7.1. För Ubuntu Desktop
+### 8.1. För Ubuntu Desktop
 
 ```bash
 sudo nano /etc/gdm3/custom.conf
@@ -418,7 +401,7 @@ AutomaticLogin=epa
 AutomaticLoginEnable=true
 ```
 
-### 7.2. För Ubuntu Server med X11
+### 8.2. För Ubuntu Server med X11
 
 Om du använder lightdm:
 
@@ -438,22 +421,15 @@ autologin-user-timeout=0
 
 ## Steg 9: Disable Screen Saver och Power Management
 
-### 8.1. Disable screen saver
+### 9.1. Installera x11-xserver-utils (för screen saver-kontroll)
 
 ```bash
 sudo apt install -y x11-xserver-utils
 ```
 
-Lägg till i `start-kiosk.sh` (före chromium-start):
+**OBS:** Screen saver-disabling är redan inkluderat i `start-kiosk.sh`.
 
-```bash
-# Disable screen saver
-xset s off
-xset -dpms
-xset s noblank
-```
-
-### 8.2. Disable sleep/hibernate
+### 9.2. Disable sleep/hibernate
 
 ```bash
 sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
@@ -461,23 +437,13 @@ sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.ta
 
 ---
 
-## Steg 10: Konfigurera Firewall (om lokalt)
-
-Om du kör servern lokalt och vill exponera den:
-
-```bash
-sudo ufw allow 3000/tcp
-sudo ufw allow 3001/tcp
-sudo ufw enable
-```
-
 ---
 
-## Steg 11: Konfigurera Railway med ngrok URL
+## Steg 10: Konfigurera Railway med ngrok URL
 
 När ngrok startar, behöver du uppdatera Railway med ngrok WebSocket URL:en.
 
-### 11.1. Hämta ngrok URL
+### 10.1. Hämta ngrok URL
 
 Efter att ngrok har startat:
 
@@ -492,7 +458,7 @@ cat /tmp/ngrok-ws-url.txt
 
 Du får en URL som `https://abc123.ngrok.io` - konvertera till WebSocket: `wss://abc123.ngrok.io`
 
-### 11.2. Uppdatera Railway
+### 10.2. Uppdatera Railway
 
 1. Gå till Railway → ditt projekt → Variables
 2. Lägg till eller uppdatera:
@@ -501,7 +467,7 @@ Du får en URL som `https://abc123.ngrok.io` - konvertera till WebSocket: `wss:/
 
 **OBS:** Om ngrok-URL:en ändras (vid restart), måste du uppdatera Railway manuellt. För automatisk uppdatering, se avsnittet om Railway API nedan.
 
-### 11.3. Automatisk uppdatering (valfritt)
+### 10.3. Automatisk uppdatering (valfritt)
 
 För att automatiskt uppdatera Railway när ngrok startar, skapa ett script:
 
@@ -542,9 +508,9 @@ curl -H "Authorization: Bearer $RAILWAY_TOKEN" \
 
 ---
 
-## Steg 12: Testa Installationen
+## Steg 11: Testa Installationen
 
-### 12.1. Testa services manuellt
+### 11.1. Testa services manuellt
 
 ```bash
 # Testa serial bridge
@@ -563,7 +529,7 @@ sudo systemctl start epa-kiosk.service
 sudo systemctl status epa-kiosk.service
 ```
 
-### 12.2. Kolla logs
+### 11.2. Kolla logs
 
 ```bash
 # Serial bridge logs
@@ -576,7 +542,7 @@ journalctl -u ngrok.service -f
 journalctl -u epa-kiosk.service -f
 ```
 
-### 12.3. Reboot och testa
+### 11.3. Reboot och testa
 
 ```bash
 sudo reboot
@@ -614,8 +580,8 @@ npm run bridge
 # Kolla att X11/display fungerar
 echo $DISPLAY
 
-# Testa att starta Chromium manuellt
-chromium-browser --kiosk http://localhost:3000
+# Testa att starta Chromium manuellt (ersätt med din Railway URL)
+chromium-browser --kiosk https://din-app.up.railway.app
 ```
 
 ### WebSocket-anslutning misslyckas
