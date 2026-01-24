@@ -50,28 +50,47 @@ Du bör se Node.js version 20.x eller senare.
 
 ---
 
-## Steg 3: Installera Projektet
+## Steg 3: Skapa epa-användare
 
-### 3.1. Klona repository
+### 3.1. Skapa användaren "epa" (om den inte redan finns)
 
 ```bash
-cd /home
+# Skapa användare om den inte finns
+if ! id "epa" &>/dev/null; then
+  sudo useradd -m -s /bin/bash epa
+  echo "✅ Användare 'epa' skapad"
+else
+  echo "ℹ️  Användare 'epa' finns redan"
+fi
+
+# Lägg till epa i dialout-gruppen (för USB-serial access)
+sudo usermod -a -G dialout epa
+```
+
+**OBS:** Logga ut och in igen som "epa" för att ändringarna ska gälla, eller använd `newgrp dialout`.
+
+### 3.2. Klona repository
+
+```bash
 sudo mkdir -p /opt/epa-dunk-station
-sudo chown $USER:$USER /opt/epa-dunk-station
+sudo chown epa:epa /opt/epa-dunk-station
 cd /opt/epa-dunk-station
-git clone https://github.com/niclas-commits/epa-dunk-station.git .
+sudo -u epa git clone https://github.com/niclas-commits/epa-dunk-station.git .
 ```
 
-### 3.2. Installera dependencies
+### 3.3. Installera dependencies
 
 ```bash
-npm install
+# Logga in som epa eller använd sudo -u epa
+sudo -u epa npm install
 ```
 
-### 3.3. Skapa miljövariabler (valfritt)
+**OBS:** Om du är inloggad som epa, kör bara `npm install`.
+
+### 3.4. Skapa miljövariabler (valfritt)
 
 ```bash
-nano .env
+sudo -u epa nano /opt/epa-dunk-station/.env
 ```
 
 Lägg till endast om Arduino-porten inte hittas automatiskt:
@@ -87,13 +106,7 @@ ARDUINO_PORT=/dev/ttyACM0  # eller /dev/ttyUSB0, kolla med: ls /dev/tty*
 
 ## Steg 4: Konfigurera Serial Bridge
 
-### 4.1. Lägg till användare i dialout-gruppen (för USB-serial access)
-
-```bash
-sudo usermod -a -G dialout $USER
-```
-
-Logga ut och in igen för att ändringarna ska gälla.
+**OBS:** Användaren "epa" är redan tillagd i dialout-gruppen i steg 3.1.
 
 ### 4.2. Testa Arduino-anslutning
 
@@ -106,7 +119,8 @@ Du bör se något som `/dev/ttyACM0` eller `/dev/ttyUSB0` när Arduino är anslu
 ### 4.3. Testa serial bridge
 
 ```bash
-npm run bridge
+cd /opt/epa-dunk-station
+sudo -u epa npm run bridge
 ```
 
 Du bör se: `✅ Serial port opened` och `🔌 Connecting to Arduino at /dev/ttyACM0`
@@ -150,12 +164,12 @@ ngrok config add-authtoken DIN_AUTHTOKEN_HÄR
 ### 5.3. Testa ngrok manuellt
 
 ```bash
-# I en terminal, starta serial bridge
+# I en terminal, starta serial bridge (som användare epa)
 cd /opt/epa-dunk-station
-npm run bridge
+sudo -u epa npm run bridge
 
-# I en annan terminal, starta ngrok
-ngrok http 3001
+# I en annan terminal, starta ngrok (som användare epa)
+sudo -u epa ngrok http 3001
 ```
 
 Du bör se en URL som `https://abc123.ngrok.io` - kopiera denna!
@@ -165,8 +179,8 @@ Du bör se en URL som `https://abc123.ngrok.io` - kopiera denna!
 Skapa ngrok config-fil:
 
 ```bash
-mkdir -p ~/.config/ngrok
-nano ~/.config/ngrok/ngrok.yml
+sudo -u epa mkdir -p /home/epa/.config/ngrok
+sudo -u epa nano /home/epa/.config/ngrok/ngrok.yml
 ```
 
 Lägg till:
@@ -314,7 +328,7 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-**OBS:** Ändra `/home/epa/.config/ngrok/ngrok.yml` till rätt sökväg för din användare.
+**OBS:** Sökvägen `/home/epa/.config/ngrok/ngrok.yml` är korrekt för användaren "epa".
 
 ### 7.2. Skapa systemd service för serial bridge
 
@@ -345,12 +359,7 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-**OBS:** Ändra `User=epa` till ditt användarnamn, eller skapa en dedikerad användare:
-
-```bash
-sudo useradd -m -s /bin/bash epa
-sudo chown -R epa:epa /opt/epa-dunk-station
-```
+**OBS:** Användaren "epa" ska redan vara skapad från steg 3.1.
 
 ### 7.3. Skapa systemd service för kiosk webbläsare
 
@@ -409,7 +418,7 @@ AutomaticLogin=epa
 AutomaticLoginEnable=true
 ```
 
-**OBS:** Ersätt `epa` med ditt användarnamn om du inte skapat en dedikerad användare.
+**OBS:** Användaren "epa" ska redan vara skapad från steg 3.1.
 
 ### 8.2. Verifiera auto-login
 
@@ -569,7 +578,7 @@ groups
 
 # Testa manuellt
 cd /opt/epa-dunk-station
-npm run bridge
+sudo -u epa npm run bridge
 ```
 
 ### Webbläsare öppnas inte
