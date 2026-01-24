@@ -310,6 +310,66 @@ async function generateSong() {
 }
 
 // ==========================================================
+//  A R D U I N O  W E B S O C K E T
+// ==========================================================
+let arduinoWS = null;
+
+function connectArduino() {
+  // Try to connect to WebSocket bridge
+  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+  const wsHost = window.location.hostname;
+  const wsPort = '3001';
+  const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}`;
+  
+  arduinoWS = new WebSocket(wsUrl);
+  
+  arduinoWS.onopen = () => {
+    console.log('✅ Connected to Arduino bridge');
+    setStatus("Arduino ansluten! Justera visarna – vrid nyckeln för EPA-dunk!");
+  };
+  
+  arduinoWS.onmessage = (event) => {
+    try {
+      const data = JSON.parse(event.data);
+      
+      if (data.type === 'encoder') {
+        // Update gauge value
+        if (gaugeValues.hasOwnProperty(data.name)) {
+          gaugeValues[data.name] = data.value;
+          setNeedle(data.name);
+        }
+      } else if (data.type === 'button') {
+        // Handle button press
+        if (data.name === 'bassPlus') {
+          toggleButton("btn_bassplus", "bassPlusOn");
+        } else if (data.name === 'dist') {
+          toggleButton("btn_dist", "distOn");
+        } else if (data.name === 'ignition') {
+          // Trigger ignition click
+          const ignitionEl = document.getElementById("ignition");
+          if (ignitionEl) {
+            ignitionEl.click();
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error parsing Arduino message:', e);
+    }
+  };
+  
+  arduinoWS.onerror = (error) => {
+    console.warn('⚠️ Arduino WebSocket error (bridge may not be running):', error);
+    // Don't show error to user - Arduino is optional
+  };
+  
+  arduinoWS.onclose = () => {
+    console.log('🔌 Arduino WebSocket disconnected');
+    // Try to reconnect after 3 seconds
+    setTimeout(connectArduino, 3000);
+  };
+}
+
+// ==========================================================
 //  I N I T
 // ==========================================================
 window.addEventListener("load", () => {
@@ -360,6 +420,9 @@ window.addEventListener("load", () => {
           setStatus("Stoppad.");
       }
   });
+
+  // Connect to Arduino
+  connectArduino();
 
   resizeDashboard();
   setStatus("Justera visarna – vrid nyckeln för EPA-dunk!");

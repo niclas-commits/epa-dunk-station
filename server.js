@@ -23,11 +23,6 @@ const PORT = process.env.PORT || 3000;
 //  STATIC FILE DIRS
 // ==========================================================
 const PUBLIC_DIR = path.join(__dirname, "public");
-const TRACKS_DIR = path.join(PUBLIC_DIR, "tracks");
-
-if (!fs.existsSync(TRACKS_DIR)) {
-    fs.mkdirSync(TRACKS_DIR, { recursive: true });
-}
 
 app.use(express.static(PUBLIC_DIR));
 
@@ -295,12 +290,11 @@ async function generateSongWithStableAudio(payload) {
     const filename = `epa_${Date.now()}_${randomUUID().slice(0, 8)}.mp3`;
     const buffer = Buffer.from(resp.data);
 
-    fs.writeFileSync(path.join(TRACKS_DIR, filename), buffer);
-
+    // Upload to AWS S3 only (no local storage on Railway)
     const publicUrl = await uploadToS3(buffer, filename);
 
     return {
-        relUrl: `/tracks/${filename}`,
+        relUrl: publicUrl,  // Use S3 URL as relUrl too
         publicUrl
     };
 }
