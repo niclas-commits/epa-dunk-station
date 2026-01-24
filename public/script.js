@@ -316,11 +316,23 @@ let arduinoWS = null;
 
 function connectArduino() {
   // Try to connect to WebSocket bridge
-  const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-  const wsHost = window.location.hostname;
-  const wsPort = '3001';
-  const wsUrl = `${wsProtocol}//${wsHost}:${wsPort}`;
+  // If ARDUINO_WS_URL is set (e.g. via ngrok tunnel), use that
+  // Otherwise, try to connect to same host on port 3001
+  let wsUrl;
   
+  // Check if there's a configured Arduino WebSocket URL (for tunnel setups)
+  const configuredUrl = document.documentElement.dataset.arduinoWsUrl;
+  if (configuredUrl) {
+    wsUrl = configuredUrl;
+  } else {
+    // Default: try same host on port 3001
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsHost = window.location.hostname;
+    const wsPort = '3001';
+    wsUrl = `${wsProtocol}//${wsHost}:${wsPort}`;
+  }
+  
+  console.log('🔌 Connecting to Arduino bridge at:', wsUrl);
   arduinoWS = new WebSocket(wsUrl);
   
   arduinoWS.onopen = () => {

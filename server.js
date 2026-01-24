@@ -24,11 +24,27 @@ const PORT = process.env.PORT || 3000;
 // ==========================================================
 const PUBLIC_DIR = path.join(__dirname, "public");
 
-app.use(express.static(PUBLIC_DIR));
-
 app.use(cors());
 app.use(express.json({ limit: "2mb" }));
-app.use(express.static(path.join(__dirname, "public")));
+
+// Serve static files (except index.html which we'll handle specially)
+app.use(express.static(PUBLIC_DIR, { index: false }));
+
+// Serve index.html with injected Arduino WebSocket URL
+app.get('/', (req, res) => {
+  const indexPath = path.join(PUBLIC_DIR, 'index.html');
+  fs.readFile(indexPath, 'utf8', (err, data) => {
+    if (err) {
+      return res.status(500).send('Error loading page');
+    }
+    // Inject Arduino WebSocket URL if configured
+    const arduinoWsUrl = process.env.ARDUINO_WS_URL;
+    if (arduinoWsUrl) {
+      data = data.replace('<html lang="sv">', `<html lang="sv" data-arduino-ws-url="${arduinoWsUrl}">`);
+    }
+    res.send(data);
+  });
+});
 
 // ==========================================================
 //  DB-SETUP

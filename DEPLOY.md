@@ -97,8 +97,8 @@ PORT=3000
 
 ⚠️ **Serial Bridge (`serial-bridge.js`) körs INTE på Railway**
 - Den behöver fysisk åtkomst till Arduino
-- Kör den lokalt om du behöver Arduino-funktionalitet
-- Eller skapa en separat Railway-service för bridge (kräver USB-serial support)
+- För att använda Arduino med Railway, se `ARDUINO_SETUP.md`
+- Du behöver köra serial bridge lokalt och exponera den via en tunnel (ngrok/cloudflared)
 
 ✅ **Alla MP3-filer sparas i AWS S3**
 - Inga lokala filer sparas på Railway
