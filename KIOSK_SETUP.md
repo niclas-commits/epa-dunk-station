@@ -23,8 +23,10 @@ sudo apt upgrade -y
 ### 1.2. Installera nödvändiga verktyg
 
 ```bash
-sudo apt install -y curl git build-essential
+sudo apt install -y curl git build-essential jq
 ```
+
+**jq** behövs för att parsa JSON från ngrok API.
 
 ---
 
@@ -124,7 +126,127 @@ Du bör se: `✅ Serial port opened` och `🔌 Connecting to Arduino at /dev/tty
 
 ---
 
-## Steg 5: Installera och Konfigurera Webbläsare (Kiosk Mode)
+## Steg 5: Installera och Konfigurera ngrok (för Railway deployment)
+
+**Varför behövs ngrok?**
+Om du kör servern på Railway men serial bridge lokalt på NUC:en, behöver du exponera serial bridge (port 3001) via en tunnel så att Railway-frontend kan ansluta till den.
+
+### 5.1. Installera ngrok
+
+```bash
+# Ladda ner ngrok
+cd /tmp
+wget https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz
+
+# Extrahera
+tar -xzf ngrok-v3-stable-linux-amd64.tgz
+
+# Flytta till /usr/local/bin
+sudo mv ngrok /usr/local/bin/
+sudo chmod +x /usr/local/bin/ngrok
+
+# Verifiera installation
+ngrok version
+```
+
+### 5.2. Skapa ngrok-konto och hämta authtoken
+
+1. Gå till https://dashboard.ngrok.com/signup
+2. Skapa ett gratis konto
+3. Kopiera din authtoken från dashboard
+4. Konfigurera ngrok:
+
+```bash
+ngrok config add-authtoken DIN_AUTHTOKEN_HÄR
+```
+
+### 5.3. Testa ngrok manuellt
+
+```bash
+# I en terminal, starta serial bridge
+cd /opt/epa-dunk-station
+npm run bridge
+
+# I en annan terminal, starta ngrok
+ngrok http 3001
+```
+
+Du bör se en URL som `https://abc123.ngrok.io` - kopiera denna!
+
+### 5.4. Konfigurera ngrok för auto-start
+
+Skapa ngrok config-fil:
+
+```bash
+mkdir -p ~/.config/ngrok
+nano ~/.config/ngrok/ngrok.yml
+```
+
+Lägg till:
+
+```yaml
+version: "2"
+authtoken: DIN_AUTHTOKEN_HÄR
+tunnels:
+  epa-bridge:
+    addr: 3001
+    proto: http
+    bind_tls: true
+```
+
+**OBS:** Ersätt `DIN_AUTHTOKEN_HÄR` med din faktiska authtoken.
+
+### 5.5. Skapa script för att hämta ngrok URL
+
+Eftersom ngrok-URL:en ändras vid varje start, behöver vi ett script som hämtar den och uppdaterar Railway:
+
+```bash
+nano /opt/epa-dunk-station/get-ngrok-url.sh
+```
+
+Lägg till:
+
+```bash
+#!/bin/bash
+
+# Vänta på att ngrok är igång
+sleep 5
+
+# Hämta ngrok URL via API
+NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io' | head -1)
+
+if [ -z "$NGROK_URL" ]; then
+  echo "❌ Kunde inte hämta ngrok URL"
+  exit 1
+fi
+
+# Konvertera http:// till wss:// för WebSocket
+WS_URL=$(echo "$NGROK_URL" | sed 's|https://|wss://|')
+
+echo "🔗 Ngrok URL: $NGROK_URL"
+echo "🔌 WebSocket URL: $WS_URL"
+
+# Spara till fil (kan användas för att uppdatera Railway automatiskt)
+echo "$WS_URL" > /tmp/ngrok-ws-url.txt
+
+# Alternativ: Uppdatera Railway automatiskt via API (kräver Railway API token)
+# RAILWAY_TOKEN="din_railway_token"
+# RAILWAY_PROJECT_ID="ditt_project_id"
+# curl -X PATCH "https://api.railway.app/v1/variables/$VARIABLE_ID" \
+#   -H "Authorization: Bearer $RAILWAY_TOKEN" \
+#   -H "Content-Type: application/json" \
+#   -d "{\"value\":\"$WS_URL\"}"
+```
+
+Gör scriptet körbart:
+
+```bash
+chmod +x /opt/epa-dunk-station/get-ngrok-url.sh
+```
+
+---
+
+## Steg 6: Installera och Konfigurera Webbläsare (Kiosk Mode)
 
 ### 5.1. Installera Chromium
 
@@ -172,9 +294,38 @@ sudo chmod +x /opt/epa-dunk-station/start-kiosk.sh
 
 ---
 
-## Steg 6: Auto-start Konfiguration
+## Steg 7: Auto-start Konfiguration
 
-### 6.1. Skapa systemd service för serial bridge
+### 7.1. Skapa systemd service för ngrok
+
+```bash
+sudo nano /etc/systemd/system/ngrok.service
+```
+
+Lägg till:
+
+```ini
+[Unit]
+Description=Ngrok Tunnel for EPA Serial Bridge
+After=network.target epa-bridge.service
+Requires=epa-bridge.service
+
+[Service]
+Type=simple
+User=epa
+ExecStart=/usr/local/bin/ngrok start --all --config /home/epa/.config/ngrok/ngrok.yml
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**OBS:** Ändra `/home/epa/.config/ngrok/ngrok.yml` till rätt sökväg för din användare.
+
+### 7.2. Skapa systemd service för serial bridge
 
 ```bash
 sudo nano /etc/systemd/system/epa-bridge.service
@@ -210,7 +361,7 @@ sudo useradd -m -s /bin/bash epa
 sudo chown -R epa:epa /opt/epa-dunk-station
 ```
 
-### 6.2. Skapa systemd service för kiosk webbläsare
+### 7.3. Skapa systemd service för kiosk webbläsare
 
 ```bash
 sudo nano /etc/systemd/system/epa-kiosk.service
@@ -236,17 +387,20 @@ RestartSec=10
 WantedBy=graphical.target
 ```
 
-### 6.3. Aktivera services
+### 7.4. Aktivera services
 
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable epa-bridge.service
+sudo systemctl enable ngrok.service
 sudo systemctl enable epa-kiosk.service
 ```
 
+**Ordning:** Serial bridge startar först, sedan ngrok, sedan kiosk webbläsare.
+
 ---
 
-## Steg 7: Konfigurera Auto-login (valfritt)
+## Steg 8: Konfigurera Auto-login (valfritt)
 
 Om du vill att systemet ska logga in automatiskt:
 
@@ -282,7 +436,7 @@ autologin-user-timeout=0
 
 ---
 
-## Steg 8: Disable Screen Saver och Power Management
+## Steg 9: Disable Screen Saver och Power Management
 
 ### 8.1. Disable screen saver
 
@@ -307,7 +461,7 @@ sudo systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.ta
 
 ---
 
-## Steg 9: Konfigurera Firewall (om lokalt)
+## Steg 10: Konfigurera Firewall (om lokalt)
 
 Om du kör servern lokalt och vill exponera den:
 
@@ -319,31 +473,110 @@ sudo ufw enable
 
 ---
 
-## Steg 10: Testa Installationen
+## Steg 11: Konfigurera Railway med ngrok URL
 
-### 10.1. Testa services manuellt
+När ngrok startar, behöver du uppdatera Railway med ngrok WebSocket URL:en.
+
+### 11.1. Hämta ngrok URL
+
+Efter att ngrok har startat:
+
+```bash
+# Kolla ngrok status
+curl http://localhost:4040/api/tunnels | jq '.tunnels[0].public_url'
+
+# Eller använd scriptet
+/opt/epa-dunk-station/get-ngrok-url.sh
+cat /tmp/ngrok-ws-url.txt
+```
+
+Du får en URL som `https://abc123.ngrok.io` - konvertera till WebSocket: `wss://abc123.ngrok.io`
+
+### 11.2. Uppdatera Railway
+
+1. Gå till Railway → ditt projekt → Variables
+2. Lägg till eller uppdatera:
+   - **Variabel:** `ARDUINO_WS_URL`
+   - **Värde:** `wss://din-ngrok-url.ngrok.io`
+
+**OBS:** Om ngrok-URL:en ändras (vid restart), måste du uppdatera Railway manuellt. För automatisk uppdatering, se avsnittet om Railway API nedan.
+
+### 11.3. Automatisk uppdatering (valfritt)
+
+För att automatiskt uppdatera Railway när ngrok startar, skapa ett script:
+
+```bash
+nano /opt/epa-dunk-station/update-railway-url.sh
+```
+
+Lägg till (ersätt med dina värden):
+
+```bash
+#!/bin/bash
+
+# Vänta på ngrok
+sleep 10
+
+# Hämta ngrok URL
+NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io' | head -1)
+WS_URL=$(echo "$NGROK_URL" | sed 's|https://|wss://|')
+
+# Uppdatera Railway via API (kräver Railway API token)
+RAILWAY_TOKEN="din_railway_api_token"
+RAILWAY_PROJECT_ID="ditt_project_id"
+VARIABLE_ID="variable_id_för_ARDUINO_WS_URL"
+
+curl -X PATCH "https://api.railway.app/v1/variables/$VARIABLE_ID" \
+  -H "Authorization: Bearer $RAILWAY_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "{\"value\":\"$WS_URL\"}"
+
+echo "✅ Railway uppdaterad med: $WS_URL"
+```
+
+**För att hitta VARIABLE_ID:**
+```bash
+curl -H "Authorization: Bearer $RAILWAY_TOKEN" \
+  "https://api.railway.app/v1/projects/$RAILWAY_PROJECT_ID/variables" | jq
+```
+
+---
+
+## Steg 12: Testa Installationen
+
+### 12.1. Testa services manuellt
 
 ```bash
 # Testa serial bridge
 sudo systemctl start epa-bridge.service
 sudo systemctl status epa-bridge.service
 
+# Testa ngrok
+sudo systemctl start ngrok.service
+sudo systemctl status ngrok.service
+
+# Kolla ngrok URL
+curl http://localhost:4040/api/tunnels | jq
+
 # Testa kiosk
 sudo systemctl start epa-kiosk.service
 sudo systemctl status epa-kiosk.service
 ```
 
-### 10.2. Kolla logs
+### 12.2. Kolla logs
 
 ```bash
 # Serial bridge logs
 journalctl -u epa-bridge.service -f
 
+# Ngrok logs
+journalctl -u ngrok.service -f
+
 # Kiosk logs
 journalctl -u epa-kiosk.service -f
 ```
 
-### 10.3. Reboot och testa
+### 12.3. Reboot och testa
 
 ```bash
 sudo reboot
@@ -352,8 +585,10 @@ sudo reboot
 Efter reboot bör:
 - Systemet logga in automatiskt
 - Serial bridge starta
+- Ngrok starta och exponera port 3001
 - Chromium öppna i fullscreen kiosk-läge
-- Webbsidan laddas automatiskt
+- Webbsidan laddas automatiskt från Railway
+- Arduino ansluta via ngrok-tunnel
 
 ---
 
@@ -386,8 +621,11 @@ chromium-browser --kiosk http://localhost:3000
 ### WebSocket-anslutning misslyckas
 
 - Kontrollera att serial bridge körs: `systemctl status epa-bridge.service`
+- Kontrollera att ngrok körs: `systemctl status ngrok.service`
+- Kontrollera ngrok URL: `curl http://localhost:4040/api/tunnels | jq`
+- Kontrollera att `ARDUINO_WS_URL` är korrekt satt på Railway (ska vara `wss://din-ngrok-url.ngrok.io`)
 - Kontrollera port 3001: `netstat -tuln | grep 3001`
-- Kolla logs: `journalctl -u epa-bridge.service -n 50`
+- Kolla logs: `journalctl -u epa-bridge.service -n 50` och `journalctl -u ngrok.service -n 50`
 
 ### Arduino hittas inte
 
@@ -468,7 +706,10 @@ cd /opt/epa-dunk-station
 git pull origin main
 npm install
 sudo systemctl restart epa-bridge.service
+sudo systemctl restart ngrok.service
 ```
+
+**OBS:** Efter ngrok restart, kontrollera ny URL och uppdatera Railway om den ändrats.
 
 ---
 
