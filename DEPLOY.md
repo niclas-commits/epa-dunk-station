@@ -1,5 +1,7 @@
 # Deployment Guide - Railway
 
+> **För kiosk-setup på Ubuntu NUC:** Se [KIOSK_SETUP.md](./KIOSK_SETUP.md)
+
 ## Steg 1: Förberedelser
 
 ### 1.1. Pusha koden till Git
