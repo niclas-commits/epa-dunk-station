@@ -4,7 +4,7 @@ Komplett guide för att köra EPA-Dunk Station i kioskmiljö på Ubuntu NUC med 
 
 ## Förutsättningar
 
-- Ubuntu 20.04 eller senare
+- Ubuntu Desktop 20.04 eller senare
 - NUC med i5 processor
 - Arduino MKR Zero ansluten via USB
 - Internetanslutning (för Railway deployment)
@@ -241,6 +241,14 @@ chmod +x /opt/epa-dunk-station/get-ngrok-url.sh
 sudo apt install -y chromium-browser
 ```
 
+**OBS:** På Ubuntu Desktop 22.04+ kan paketet heta `chromium` istället för `chromium-browser`. Om kommandot ovan inte fungerar, prova:
+
+```bash
+sudo apt install -y chromium
+```
+
+Om du använder `chromium` istället för `chromium-browser`, uppdatera `start-kiosk.sh` och ändra `chromium-browser` till `chromium`.
+
 ### 6.2. Skapa kiosk startup script
 
 ```bash
@@ -385,15 +393,15 @@ sudo systemctl enable epa-kiosk.service
 
 ## Steg 8: Konfigurera Auto-login (valfritt)
 
-Om du vill att systemet ska logga in automatiskt:
+Om du vill att systemet ska logga in automatiskt vid boot:
 
-### 8.1. För Ubuntu Desktop
+### 8.1. Konfigurera GDM (Ubuntu Desktop)
 
 ```bash
 sudo nano /etc/gdm3/custom.conf
 ```
 
-Avkommentera (ta bort `#`):
+Avkommentera (ta bort `#`) eller lägg till:
 
 ```ini
 [daemon]
@@ -401,21 +409,11 @@ AutomaticLogin=epa
 AutomaticLoginEnable=true
 ```
 
-### 8.2. För Ubuntu Server med X11
+**OBS:** Ersätt `epa` med ditt användarnamn om du inte skapat en dedikerad användare.
 
-Om du använder lightdm:
+### 8.2. Verifiera auto-login
 
-```bash
-sudo nano /etc/lightdm/lightdm.conf
-```
-
-Lägg till:
-
-```ini
-[Seat:*]
-autologin-user=epa
-autologin-user-timeout=0
-```
+Efter reboot bör systemet logga in automatiskt utan lösenord.
 
 ---
 
@@ -577,12 +575,17 @@ npm run bridge
 ### Webbläsare öppnas inte
 
 ```bash
-# Kolla att X11/display fungerar
+# Kolla att X11/display fungerar (ska visa :0 eller :1)
 echo $DISPLAY
+
+# Om tom, sätt display manuellt
+export DISPLAY=:0
 
 # Testa att starta Chromium manuellt (ersätt med din Railway URL)
 chromium-browser --kiosk https://din-app.up.railway.app
 ```
+
+**OBS:** På Ubuntu Desktop är DISPLAY vanligtvis `:0` automatiskt.
 
 ### WebSocket-anslutning misslyckas
 
