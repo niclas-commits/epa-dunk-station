@@ -367,13 +367,8 @@ function connectArduino() {
         } else if (data.name === 'dist') {
           setButtonState("btn_dist", "distOn", pressed);
         } else if (data.name === 'ignition') {
-          // Ignition: pressed = start, released = stop
-          if (pressed) {
-            const ignitionEl = document.getElementById("ignition");
-            if (ignitionEl) {
-              ignitionEl.click();
-            }
-          }
+          // Ignition: pressed = start (true), released = stop (false)
+          setIgnitionState(pressed);
         }
       }
     } catch (e) {
