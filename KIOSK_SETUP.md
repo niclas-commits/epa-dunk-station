@@ -432,8 +432,8 @@ else
   exit 1
 fi
 
-# Starta Chromium i kiosk-läge
-CHROMIUM_FLAGS="--kiosk --noerrdialogs --disable-infobars --no-first-run --disable-features=TranslateUI --autoplay-policy=no-user-gesture-required"
+# Starta Chromium i kiosk-läge (fullskärm)
+CHROMIUM_FLAGS="--kiosk --start-fullscreen --noerrdialogs --disable-infobars --no-first-run --disable-features=TranslateUI --autoplay-policy=no-user-gesture-required --disable-session-crashed-bubble --disable-restore-session-state --disable-pinch --overscroll-history-navigation=0 --disable-features=TouchpadOverscrollHistoryNavigation"
 
 # Använd din Railway URL (ändra till din faktiska URL)
 KIOSK_URL="https://din-app.up.railway.app"
