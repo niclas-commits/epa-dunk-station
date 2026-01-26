@@ -245,6 +245,7 @@ function stopVU() {
 let engineOn = false;
 let ignitionSound = null;
 let qrCode = null;
+let statusTimeout = null; // For resetting status message after "Stoppad"
 
 function setStatus(msg) {
   const el = document.getElementById("status");
@@ -260,6 +261,12 @@ function setIgnitionState(on) {
   if (on) {
     // Start engine (only if not already on)
     if (!engineOn) {
+      // Clear any pending status timeout
+      if (statusTimeout) {
+        clearTimeout(statusTimeout);
+        statusTimeout = null;
+      }
+      
       engineOn = true;
       if (ignitionSound) {
         ignitionSound.currentTime = 0;
@@ -285,6 +292,13 @@ function setIgnitionState(on) {
       if (qrCode) qrCode.clear();
       setStatus("Stoppad.");
       console.log('Engine stopped');
+      
+      // Reset status message after 5 seconds
+      if (statusTimeout) clearTimeout(statusTimeout);
+      statusTimeout = setTimeout(() => {
+        setStatus("Justera visarna – vrid nyckeln för EPA-dunk!");
+        statusTimeout = null;
+      }, 5000);
     }
   }
 }
