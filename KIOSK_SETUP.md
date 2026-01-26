@@ -438,17 +438,21 @@ CHROMIUM_FLAGS="--kiosk --noerrdialogs --disable-infobars --no-first-run --disab
 # Använd din Railway URL (ändra till din faktiska URL)
 KIOSK_URL="https://din-app.up.railway.app"
 
-# Starta Chromium
-$CHROMIUM_CMD $CHROMIUM_FLAGS "$KIOSK_URL" &
+# Starta Chromium med full path och loggning
+echo "🚀 Försöker starta $CHROMIUM_CMD..."
+$CHROMIUM_CMD $CHROMIUM_FLAGS "$KIOSK_URL" > /tmp/chromium.log 2>&1 &
 
 # Vänta lite och kontrollera att Chromium startade
-sleep 2
-if ! pgrep -x "$CHROMIUM_CMD" > /dev/null; then
+sleep 3
+if ! pgrep -f "$CHROMIUM_CMD" > /dev/null; then
   echo "❌ Chromium startade inte!"
+  echo "📋 Loggar:"
+  cat /tmp/chromium.log
   exit 1
 fi
 
 echo "✅ Chromium startad i kiosk-läge"
+echo "📋 Process: $(pgrep -f $CHROMIUM_CMD)"
 ```
 
 Gör scriptet körbart och sätt rätt ägare:
