@@ -232,21 +232,22 @@ sudo -u epa mkdir -p /home/epa/.config/ngrok
 sudo -u epa nano /home/epa/.config/ngrok/ngrok.yml
 ```
 
-**Alternativ 1: Enkel config (rekommenderat för ngrok v3)**
+**Alternativ 1: Minimal config för ngrok v3 (rekommenderat)**
+
+Om ngrok klagar på line 5 (`endpoints:`), prova detta minimala format:
+
 ```yaml
 version: 3
 agent:
   authtoken: DIN_AUTHTOKEN_HÄR
-endpoints:
-  epa-bridge:
-    addr: 3001
-    proto: http
-    bind_tls: true
 ```
 
-**Alternativ 2: Om du får "error reading configuration file"**
+Sedan starta ngrok med kommandoradsargument:
+```bash
+sudo -u epa ngrok http 3001
+```
 
-Det kan bero på YAML-syntaxfel. Prova detta enklare format:
+**Alternativ 2: Fullständig config (om endpoints fungerar)**
 
 ```yaml
 version: 3
@@ -258,9 +259,25 @@ endpoints:
     proto: "http"
 ```
 
-**Alternativ 3: Använd ngrok utan config-fil (enklast)**
+**Alternativ 3: Använd ngrok v2-format (om v3 ger problem)**
 
-Om config-filen fortsätter ge problem, kan du köra ngrok direkt med kommandoradsargument. Uppdatera systemd service istället (se steg 7.1).
+```yaml
+version: 2
+authtoken: DIN_AUTHTOKEN_HÄR
+tunnels:
+  epa-bridge:
+    addr: 3001
+    proto: http
+```
+
+**Alternativ 4: Använd ngrok helt utan config-fil (enklast)**
+
+Om config-filen fortsätter ge problem, kör ngrok helt utan config-fil. Sätt authtoken först:
+```bash
+sudo -u epa ngrok config add-authtoken DIN_AUTHTOKEN_HÄR
+```
+
+Sedan kör ngrok direkt: `ngrok http 3001` (se steg 7.1 för systemd service).
 
 **OBS:** 
 - Ersätt `DIN_AUTHTOKEN_HÄR` med din faktiska authtoken
