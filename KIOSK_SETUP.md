@@ -573,12 +573,17 @@ Lägg till:
 Description=EPA Dunk Station Kiosk Browser
 After=graphical.target network-online.target
 Wants=network-online.target
+Requires=graphical.target
 
 [Service]
 Type=simple
 User=epa
 Environment="DISPLAY=:0"
 Environment="XAUTHORITY=/home/epa/.Xauthority"
+Environment="HOME=/home/epa"
+Environment="USER=epa"
+# Hämta XAUTHORITY från den inloggade användaren
+ExecStartPre=/bin/bash -c 'if [ -f /home/epa/.Xauthority ]; then export XAUTHORITY=/home/epa/.Xauthority; fi'
 ExecStart=/opt/epa-dunk-station/start-kiosk.sh
 Restart=always
 RestartSec=10
@@ -588,6 +593,42 @@ StandardError=journal
 [Install]
 WantedBy=graphical.target
 ```
+
+**Viktigt:** Om detta fortfarande inte fungerar, prova detta alternativ som använder systemd user session:
+
+**Alternativ: Använd systemd user service (rekommenderat för GUI-apps)**
+
+```bash
+# Skapa user service istället
+sudo -u epa mkdir -p /home/epa/.config/systemd/user
+sudo -u epa nano /home/epa/.config/systemd/user/epa-kiosk.service
+```
+
+Lägg till:
+
+```ini
+[Unit]
+Description=EPA Dunk Station Kiosk Browser
+After=graphical-session.target
+
+[Service]
+Type=simple
+Environment="DISPLAY=:0"
+ExecStart=/opt/epa-dunk-station/start-kiosk.sh
+Restart=always
+RestartSec=10
+
+[Install]
+WantedBy=default.target
+```
+
+Aktivera user service:
+```bash
+sudo -u epa systemctl --user enable epa-kiosk.service
+sudo -u epa systemctl --user start epa-kiosk.service
+```
+
+**OBS:** User services körs automatiskt när användaren loggar in, vilket är perfekt för GUI-applikationer.
 
 ### 7.4. Aktivera services
 
@@ -859,6 +900,8 @@ sudo systemctl cat epa-kiosk.service
 - X11-behörigheter saknas → Kör `xhost +local:` som root
 - Fel chromium-kommando → Kontrollera om det är `chromium` eller `chromium-browser`
 - Script körs för tidigt → Öka `sleep`-värdet i scriptet
+- **Service körs men webbläsare startar inte** → Använd systemd user service istället (se steg 7.3 alternativ)
+- XAUTHORITY saknas → Service behöver köras när användaren är inloggad (använd user service)
 
 ### WebSocket-anslutning misslyckas
 
