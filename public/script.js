@@ -360,7 +360,8 @@ function connectArduino() {
         }
       } else if (data.type === 'button') {
         // Handle button state (pressed = true/false)
-        const pressed = data.pressed === true;
+        // Handle both boolean and string "true"/"false"
+        const pressed = data.pressed === true || data.pressed === "true";
         
         if (data.name === 'bassPlus') {
           setButtonState("btn_bassplus", "bassPlusOn", pressed);
