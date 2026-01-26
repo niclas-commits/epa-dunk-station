@@ -363,12 +363,15 @@ function connectArduino() {
         // Handle both boolean and string "true"/"false"
         const pressed = data.pressed === true || data.pressed === "true";
         
+        console.log('Button event:', data.name, 'pressed:', data.pressed, 'parsed:', pressed);
+        
         if (data.name === 'bassPlus') {
           setButtonState("btn_bassplus", "bassPlusOn", pressed);
         } else if (data.name === 'dist') {
           setButtonState("btn_dist", "distOn", pressed);
         } else if (data.name === 'ignition') {
           // Ignition: pressed = start (true), released = stop (false)
+          console.log('Setting ignition state to:', pressed);
           setIgnitionState(pressed);
         }
       }
