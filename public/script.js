@@ -251,6 +251,44 @@ function setStatus(msg) {
   if (el) el.textContent = msg;
 }
 
+// Function to set ignition state (used by both manual click and Arduino)
+// Must be defined before connectArduino() is called
+function setIgnitionState(on) {
+  console.log('setIgnitionState called with:', on, 'current engineOn:', engineOn);
+  
+  // Always set state based on Arduino input, regardless of current state
+  if (on) {
+    // Start engine (only if not already on)
+    if (!engineOn) {
+      engineOn = true;
+      if (ignitionSound) {
+        ignitionSound.currentTime = 0;
+        ignitionSound.play();
+      }
+      const ignitionEl = document.getElementById("ignition");
+      if (ignitionEl) ignitionEl.style.transform = "rotate(45deg)";
+      setLamp(3, true);
+      setLamp(4, true);
+      generateSong();
+      console.log('Engine started');
+    }
+  } else {
+    // Stop engine (only if currently on)
+    if (engineOn) {
+      engineOn = false;
+      if (currentAudio) currentAudio.pause();
+      stopBlink();
+      stopVU();
+      allLampsOff();
+      const ignitionEl = document.getElementById("ignition");
+      if (ignitionEl) ignitionEl.style.transform = "rotate(0deg)";
+      if (qrCode) qrCode.clear();
+      setStatus("Stoppad.");
+      console.log('Engine stopped');
+    }
+  }
+}
+
 async function generateSong() {
   const payload = buildPayload();
 
@@ -421,39 +459,6 @@ window.addEventListener("load", () => {
   if (qrEl) qrCode = new QRCode(qrEl, { text: "", width: 160, height: 160 });
 
   ignitionSound = new Audio("/audio/ignition.wav");
-
-  // Function to set ignition state (used by both manual click and Arduino)
-  function setIgnitionState(on) {
-    console.log('setIgnitionState called with:', on, 'current engineOn:', engineOn);
-    
-    // Always set state based on Arduino input, regardless of current state
-    if (on) {
-      // Start engine (only if not already on)
-      if (!engineOn) {
-        engineOn = true;
-        ignitionSound.currentTime = 0;
-        ignitionSound.play();
-        document.getElementById("ignition").style.transform = "rotate(45deg)";
-        setLamp(3, true);
-        setLamp(4, true);
-        generateSong();
-        console.log('Engine started');
-      }
-    } else {
-      // Stop engine (only if currently on)
-      if (engineOn) {
-        engineOn = false;
-        if (currentAudio) currentAudio.pause();
-        stopBlink();
-        stopVU();
-        allLampsOff();
-        document.getElementById("ignition").style.transform = "rotate(0deg)";
-        if (qrCode) qrCode.clear();
-        setStatus("Stoppad.");
-        console.log('Engine stopped');
-      }
-    }
-  }
 
   // Tändningsnyckel (manual click - toggle)
   document.getElementById("ignition").addEventListener("click", () => {
