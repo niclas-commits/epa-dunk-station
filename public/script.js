@@ -95,6 +95,14 @@ function toggleButton(id, stateVar) {
   el.src = `/images/${base}_${newState ? "on" : "off"}.jpg`;
 }
 
+function setButtonState(id, stateVar, pressed) {
+  const el = document.getElementById(id);
+  state[stateVar] = pressed;
+
+  const base = (id === "btn_bassplus") ? "button1" : "button2";
+  el.src = `/images/${base}_${pressed ? "on" : "off"}.jpg`;
+}
+
 // ==========================================================
 //  L A M P O R   (9 st) + BLINK
 // ==========================================================
@@ -351,16 +359,20 @@ function connectArduino() {
           setNeedle(data.name);
         }
       } else if (data.type === 'button') {
-        // Handle button press
+        // Handle button state (pressed = true/false)
+        const pressed = data.pressed === true;
+        
         if (data.name === 'bassPlus') {
-          toggleButton("btn_bassplus", "bassPlusOn");
+          setButtonState("btn_bassplus", "bassPlusOn", pressed);
         } else if (data.name === 'dist') {
-          toggleButton("btn_dist", "distOn");
+          setButtonState("btn_dist", "distOn", pressed);
         } else if (data.name === 'ignition') {
-          // Trigger ignition click
-          const ignitionEl = document.getElementById("ignition");
-          if (ignitionEl) {
-            ignitionEl.click();
+          // Ignition: pressed = start, released = stop
+          if (pressed) {
+            const ignitionEl = document.getElementById("ignition");
+            if (ignitionEl) {
+              ignitionEl.click();
+            }
           }
         }
       }
