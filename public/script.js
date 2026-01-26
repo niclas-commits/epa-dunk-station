@@ -360,10 +360,16 @@ function connectArduino() {
         }
       } else if (data.type === 'button') {
         // Handle button state (pressed = true/false)
+        // Check if pressed property exists
+        if (data.pressed === undefined) {
+          console.warn('Button event missing pressed property:', data);
+          return;
+        }
+        
         // Handle both boolean and string "true"/"false"
         const pressed = data.pressed === true || data.pressed === "true";
         
-        console.log('Button event:', data.name, 'pressed:', data.pressed, 'parsed:', pressed);
+        console.log('Button event:', data.name, 'pressed (raw):', data.pressed, 'type:', typeof data.pressed, 'parsed:', pressed);
         
         if (data.name === 'bassPlus') {
           setButtonState("btn_bassplus", "bassPlusOn", pressed);
@@ -371,8 +377,10 @@ function connectArduino() {
           setButtonState("btn_dist", "distOn", pressed);
         } else if (data.name === 'ignition') {
           // Ignition: pressed = start (true), released = stop (false)
-          console.log('Setting ignition state to:', pressed);
+          console.log('Ignition button - Setting ignition state to:', pressed, 'current engineOn:', engineOn);
           setIgnitionState(pressed);
+        } else {
+          console.warn('Unknown button name:', data.name);
         }
       }
     } catch (e) {
