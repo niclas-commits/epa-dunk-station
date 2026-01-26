@@ -232,10 +232,21 @@ sudo -u epa mkdir -p /home/epa/.config/ngrok
 sudo -u epa nano /home/epa/.config/ngrok/ngrok.yml
 ```
 
-Lägg till:
-
+**För ngrok v3 (rekommenderat):**
 ```yaml
-version: "2"
+version: 3
+agent:
+  authtoken: DIN_AUTHTOKEN_HÄR
+endpoints:
+  epa-bridge:
+    addr: 3001
+    proto: http
+    bind_tls: true
+```
+
+**Eller för äldre ngrok v2 (om v3 inte fungerar):**
+```yaml
+version: 2
 authtoken: DIN_AUTHTOKEN_HÄR
 tunnels:
   epa-bridge:
@@ -244,7 +255,10 @@ tunnels:
     bind_tls: true
 ```
 
-**OBS:** Ersätt `DIN_AUTHTOKEN_HÄR` med din faktiska authtoken.
+**OBS:** 
+- Ersätt `DIN_AUTHTOKEN_HÄR` med din faktiska authtoken
+- ngrok v3 använder `agent:` och `endpoints:` istället för `tunnels:`
+- Om du får fel med v3-formatet, prova v2-formatet ovan
 
 ### 5.5. Skapa script för att hämta ngrok URL
 
@@ -715,6 +729,9 @@ sudo -u epa ngrok start --all --config /home/epa/.config/ngrok/ngrok.yml
 
 # 7. Kontrollera att config-filen finns och är korrekt
 cat /home/epa/.config/ngrok/ngrok.yml
+
+# 8. Validera ngrok config (för v3)
+sudo -u epa ngrok config check
 
 # 8. Kontrollera att serial bridge körs (ngrok behöver den)
 sudo systemctl status epa-bridge.service
