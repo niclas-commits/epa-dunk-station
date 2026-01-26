@@ -71,11 +71,44 @@ sudo usermod -a -G dialout epa
 
 ### 3.2. Klona repository
 
+**Om repository är publikt:**
 ```bash
 sudo mkdir -p /opt/epa-dunk-station
 sudo chown epa:epa /opt/epa-dunk-station
 cd /opt/epa-dunk-station
 sudo -u epa git clone https://github.com/niclas-commits/epa-dunk-station.git .
+```
+
+**Om repository är privat eller kloning misslyckas:**
+
+**Alternativ 1: Använd SSH (om du har SSH-nycklar konfigurerade)**
+```bash
+sudo mkdir -p /opt/epa-dunk-station
+sudo chown epa:epa /opt/epa-dunk-station
+cd /opt/epa-dunk-station
+sudo -u epa git clone git@github.com:niclas-commits/epa-dunk-station.git .
+```
+
+**Alternativ 2: Använd Personal Access Token**
+```bash
+# Skapa en Personal Access Token på GitHub: Settings → Developer settings → Personal access tokens
+# Ge den "repo" permissions
+sudo mkdir -p /opt/epa-dunk-station
+sudo chown epa:epa /opt/epa-dunk-station
+cd /opt/epa-dunk-station
+sudo -u epa git clone https://DIN_TOKEN@github.com/niclas-commits/epa-dunk-station.git .
+```
+
+**Alternativ 3: Ladda ner som ZIP**
+```bash
+sudo mkdir -p /opt/epa-dunk-station
+sudo chown epa:epa /opt/epa-dunk-station
+cd /tmp
+wget https://github.com/niclas-commits/epa-dunk-station/archive/refs/heads/main.zip
+unzip main.zip
+sudo mv epa-dunk-station-main/* /opt/epa-dunk-station/
+sudo chown -R epa:epa /opt/epa-dunk-station
+rm -rf main.zip epa-dunk-station-main
 ```
 
 ### 3.3. Installera dependencies
