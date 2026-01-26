@@ -357,47 +357,44 @@ sudo apt install -y chromium
 
 Om du använder `chromium` istället för `chromium-browser`, uppdatera `start-kiosk.sh` och ändra `chromium-browser` till `chromium`.
 
-### 6.2. Skapa kiosk startup script
+### 6.2. Skapa enkelt startup script
 
-**Viktigt: Stoppa servicen först om den körs:**
-
-```bash
-# Stoppa servicen om den körs
-sudo systemctl stop epa-kiosk.service
-
-# Kontrollera att den är stoppad
-sudo systemctl status epa-kiosk.service
-```
-
-**Om filen redan finns och du inte kan spara:**
-
-```bash
-# Kontrollera ägare och behörigheter
-ls -la /opt/epa-dunk-station/start-kiosk.sh
-
-# Om filen ägs av root, ändra ägare till epa
-sudo chown epa:epa /opt/epa-dunk-station/start-kiosk.sh
-
-# Eller skapa filen direkt som epa-användare
-sudo -u epa nano /opt/epa-dunk-station/start-kiosk.sh
-```
-
-**Om filen inte finns, skapa den:**
+**Skapa scriptet:**
 ```bash
 sudo -u epa nano /opt/epa-dunk-station/start-kiosk.sh
 ```
 
-**Efter att du sparat filen:**
+**Lägg till detta enkla innehåll:**
 ```bash
-# Sätt rätt behörigheter
-sudo chown epa:epa /opt/epa-dunk-station/start-kiosk.sh
+#!/bin/bash
+
+# Vänta lite på att systemet är klart
+sleep 3
+
+# Disable screen saver
+xset s off 2>/dev/null || true
+xset -dpms 2>/dev/null || true
+xset s noblank 2>/dev/null || true
+
+# Hitta rätt chromium-kommando
+if command -v chromium-browser &> /dev/null; then
+  CHROMIUM_CMD="chromium-browser"
+elif command -v chromium &> /dev/null; then
+  CHROMIUM_CMD="chromium"
+else
+  exit 1
+fi
+
+# Starta Chromium i fullskärm kiosk-läge
+$CHROMIUM_CMD --kiosk --start-fullscreen https://din-app.up.railway.app
+```
+
+**Gör scriptet körbart:**
+```bash
 sudo chmod +x /opt/epa-dunk-station/start-kiosk.sh
-
-# Starta om servicen för att testa
-sudo systemctl daemon-reload
-sudo systemctl start epa-kiosk.service
-sudo systemctl status epa-kiosk.service
 ```
+
+**OBS:** Ersätt `https://din-app.up.railway.app` med din faktiska Railway URL.
 
 Lägg till:
 
@@ -560,67 +557,19 @@ WantedBy=multi-user.target
 
 **OBS:** Användaren "epa" ska redan vara skapad från steg 3.1.
 
-### 7.3. Skapa systemd service för kiosk webbläsare
+### 7.3. Konfigurera auto-start (ENKEL LÖSNING)
 
-**Viktigt:** Om du har en gammal service-fil (t.ex. `start-kiosk.service`), ta bort den först:
-
-```bash
-# Kontrollera vilka kiosk-services som finns
-ls -la /etc/systemd/system/*kiosk* /etc/systemd/system/start-kiosk*
-
-# Om det finns en gammal start-kiosk.service, ta bort den
-sudo systemctl stop start-kiosk.service 2>/dev/null || true
-sudo systemctl disable start-kiosk.service 2>/dev/null || true
-sudo rm /etc/systemd/system/start-kiosk.service 2>/dev/null || true
-sudo systemctl daemon-reload
-```
-
-**Skapa den nya service-filen:**
+**Använd Desktop Autostart (enklast och bäst för GUI-apps):**
 
 ```bash
-sudo nano /etc/systemd/system/epa-kiosk.service
-```
-
-Lägg till:
-
-```ini
-[Unit]
-Description=EPA Dunk Station Kiosk Browser
-After=graphical.target network-online.target
-Wants=network-online.target
-Requires=graphical.target
-
-[Service]
-Type=simple
-User=epa
-Environment="DISPLAY=:0"
-Environment="XAUTHORITY=/home/epa/.Xauthority"
-Environment="HOME=/home/epa"
-Environment="USER=epa"
-# Hämta XAUTHORITY från den inloggade användaren
-ExecStartPre=/bin/bash -c 'if [ -f /home/epa/.Xauthority ]; then export XAUTHORITY=/home/epa/.Xauthority; fi'
-ExecStart=/opt/epa-dunk-station/start-kiosk.sh
-Restart=always
-RestartSec=10
-StandardOutput=journal
-StandardError=journal
-
-[Install]
-WantedBy=graphical.target
-```
-
-**Viktigt:** Om systemd service inte fungerar trots att scriptet fungerar manuellt, prova detta alternativ:
-
-**Alternativ 1: Använd Desktop Autostart (enklast för GUI-apps)**
-
-Om systemd service inte fungerar, använd desktop autostart istället:
-
-```bash
+# Skapa autostart-mapp
 sudo -u epa mkdir -p /home/epa/.config/autostart
+
+# Skapa autostart-fil
 sudo -u epa nano /home/epa/.config/autostart/epa-kiosk.desktop
 ```
 
-Lägg till:
+**Lägg till:**
 ```ini
 [Desktop Entry]
 Type=Application
@@ -631,9 +580,23 @@ NoDisplay=false
 X-GNOME-Autostart-enabled=true
 ```
 
-Detta startar automatiskt när epa-användaren loggar in.
+**Klart!** Detta startar automatiskt när epa-användaren loggar in (vilket sker automatiskt med auto-login).
 
-**Alternativ 2: Använd systemd user service (om du vill använda systemd)**
+**Testa:**
+```bash
+# Testa scriptet manuellt först
+sudo -u epa /opt/epa-dunk-station/start-kiosk.sh
+
+# Om det fungerar, logga ut och in igen så startar det automatiskt
+```
+
+**OBS:** Ta bort eventuella gamla systemd services om de finns:
+```bash
+sudo systemctl stop epa-kiosk.service start-kiosk.service 2>/dev/null || true
+sudo systemctl disable epa-kiosk.service start-kiosk.service 2>/dev/null || true
+```
+
+**Alternativ: Om du vill använda systemd service istället (mer komplext)**
 
 ```bash
 # Skapa user service istället
@@ -703,29 +666,11 @@ sudo systemctl start epa-bridge.service
 sudo systemctl start ngrok.service
 ```
 
-**För kiosk webbläsare - välj ett alternativ:**
+**För kiosk webbläsare:**
 
-**Om du använder systemd service:**
-```bash
-# Ta bort gamla services först (om de finns)
-sudo systemctl stop start-kiosk.service 2>/dev/null || true
-sudo systemctl disable start-kiosk.service 2>/dev/null || true
+**Desktop Autostart är redan konfigurerad (steg 7.3) - inga extra kommandon behövs!**
 
-# Aktivera den nya
-sudo systemctl enable epa-kiosk.service
-sudo systemctl start epa-kiosk.service
-sudo systemctl status epa-kiosk.service
-
-# Kontrollera att inga gamla services körs
-sudo systemctl list-units | grep -i kiosk
-```
-
-**Om systemd service inte fungerar (rekommenderat), använd Desktop Autostart:**
-```bash
-# Desktop autostart är redan konfigurerad i Alternativ 1 ovan
-# Den startar automatiskt när epa-användaren loggar in
-# Inga extra kommandon behövs!
-```
+Den startar automatiskt när epa-användaren loggar in (vilket sker automatiskt med auto-login från steg 8).
 
 **Ordning:** Serial bridge startar först, sedan ngrok, sedan kiosk webbläsare (via autostart eller service).
 
