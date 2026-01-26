@@ -562,6 +562,21 @@ WantedBy=multi-user.target
 
 ### 7.3. Skapa systemd service för kiosk webbläsare
 
+**Viktigt:** Om du har en gammal service-fil (t.ex. `start-kiosk.service`), ta bort den först:
+
+```bash
+# Kontrollera vilka kiosk-services som finns
+ls -la /etc/systemd/system/*kiosk* /etc/systemd/system/start-kiosk*
+
+# Om det finns en gammal start-kiosk.service, ta bort den
+sudo systemctl stop start-kiosk.service 2>/dev/null || true
+sudo systemctl disable start-kiosk.service 2>/dev/null || true
+sudo rm /etc/systemd/system/start-kiosk.service 2>/dev/null || true
+sudo systemctl daemon-reload
+```
+
+**Skapa den nya service-filen:**
+
 ```bash
 sudo nano /etc/systemd/system/epa-kiosk.service
 ```
@@ -692,9 +707,17 @@ sudo systemctl start ngrok.service
 
 **Om du använder systemd service:**
 ```bash
+# Ta bort gamla services först (om de finns)
+sudo systemctl stop start-kiosk.service 2>/dev/null || true
+sudo systemctl disable start-kiosk.service 2>/dev/null || true
+
+# Aktivera den nya
 sudo systemctl enable epa-kiosk.service
 sudo systemctl start epa-kiosk.service
 sudo systemctl status epa-kiosk.service
+
+# Kontrollera att inga gamla services körs
+sudo systemctl list-units | grep -i kiosk
 ```
 
 **Om systemd service inte fungerar (rekommenderat), använd Desktop Autostart:**
