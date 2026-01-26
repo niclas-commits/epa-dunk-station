@@ -368,13 +368,33 @@ Lägg till:
 ```bash
 #!/bin/bash
 
+# Sätt DISPLAY (viktigt när scriptet körs från systemd)
+export DISPLAY=:0
+
 # Vänta på att systemet är klart
 sleep 5
 
-# Disable screen saver
-xset s off
-xset -dpms
-xset s noblank
+# Vänta på att X11 är redo
+while [ -z "$(pgrep -x Xorg)" ]; do
+  sleep 1
+done
+
+# Disable screen saver (kräver X11)
+if command -v xset &> /dev/null; then
+  xset s off 2>/dev/null || true
+  xset -dpms 2>/dev/null || true
+  xset s noblank 2>/dev/null || true
+fi
+
+# Hitta rätt chromium-kommando
+if command -v chromium-browser &> /dev/null; then
+  CHROMIUM_CMD="chromium-browser"
+elif command -v chromium &> /dev/null; then
+  CHROMIUM_CMD="chromium"
+else
+  echo "❌ Chromium hittades inte!"
+  exit 1
+fi
 
 # Starta Chromium i kiosk-läge
 CHROMIUM_FLAGS="--kiosk --noerrdialogs --disable-infobars --no-first-run --disable-features=TranslateUI --autoplay-policy=no-user-gesture-required"
@@ -382,7 +402,17 @@ CHROMIUM_FLAGS="--kiosk --noerrdialogs --disable-infobars --no-first-run --disab
 # Använd din Railway URL (ändra till din faktiska URL)
 KIOSK_URL="https://din-app.up.railway.app"
 
-chromium-browser $CHROMIUM_FLAGS "$KIOSK_URL" &
+# Starta Chromium
+$CHROMIUM_CMD $CHROMIUM_FLAGS "$KIOSK_URL" &
+
+# Vänta lite och kontrollera att Chromium startade
+sleep 2
+if ! pgrep -x "$CHROMIUM_CMD" > /dev/null; then
+  echo "❌ Chromium startade inte!"
+  exit 1
+fi
+
+echo "✅ Chromium startad i kiosk-läge"
 ```
 
 Gör scriptet körbart:
@@ -500,9 +530,12 @@ Wants=network-online.target
 Type=simple
 User=epa
 Environment="DISPLAY=:0"
+Environment="XAUTHORITY=/home/epa/.Xauthority"
 ExecStart=/opt/epa-dunk-station/start-kiosk.sh
 Restart=always
 RestartSec=10
+StandardOutput=journal
+StandardError=journal
 
 [Install]
 WantedBy=graphical.target
@@ -742,17 +775,36 @@ sudo -u epa npm run bridge
 ### Webbläsare öppnas inte
 
 ```bash
-# Kolla att X11/display fungerar (ska visa :0 eller :1)
+# 1. Kolla att X11/display fungerar
 echo $DISPLAY
 
-# Om tom, sätt display manuellt
+# 2. Om tom, sätt display manuellt
 export DISPLAY=:0
 
-# Testa att starta Chromium manuellt (ersätt med din Railway URL)
+# 3. Kolla att X11 körs
+pgrep -x Xorg
+
+# 4. Testa att starta Chromium manuellt (ersätt med din Railway URL)
 chromium-browser --kiosk https://din-app.up.railway.app
+# ELLER om det inte fungerar:
+chromium --kiosk https://din-app.up.railway.app
+
+# 5. Om scriptet inte fungerar, kolla logs
+journalctl -u epa-kiosk.service -n 50
+
+# 6. Testa scriptet manuellt
+sudo -u epa /opt/epa-dunk-station/start-kiosk.sh
+
+# 7. Kontrollera X11-behörigheter
+xhost +local:
+sudo -u epa xset q
 ```
 
-**OBS:** På Ubuntu Desktop är DISPLAY vanligtvis `:0` automatiskt.
+**Vanliga problem:**
+- DISPLAY inte satt → Lägg till `export DISPLAY=:0` i scriptet
+- X11-behörigheter saknas → Kör `xhost +local:` som root
+- Fel chromium-kommando → Kontrollera om det är `chromium` eller `chromium-browser`
+- Script körs för tidigt → Öka `sleep`-värdet i scriptet
 
 ### WebSocket-anslutning misslyckas
 
