@@ -300,11 +300,18 @@ Lägg till:
 # Vänta på att ngrok är igång
 sleep 5
 
-# Hämta ngrok URL via API
-NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io' | head -1)
+# Hämta ngrok URL via API (försök med jq först, fallback till grep)
+if command -v jq &> /dev/null; then
+  # Använd jq om det finns
+  NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | jq -r '.tunnels[0].public_url' 2>/dev/null)
+else
+  # Fallback till grep om jq inte finns
+  NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io' | head -1)
+fi
 
-if [ -z "$NGROK_URL" ]; then
+if [ -z "$NGROK_URL" ] || [ "$NGROK_URL" = "null" ]; then
   echo "❌ Kunde inte hämta ngrok URL"
+  echo "💡 Kontrollera att ngrok körs: systemctl status ngrok.service"
   exit 1
 fi
 
