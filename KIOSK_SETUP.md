@@ -232,7 +232,7 @@ sudo -u epa mkdir -p /home/epa/.config/ngrok
 sudo -u epa nano /home/epa/.config/ngrok/ngrok.yml
 ```
 
-**För ngrok v3 (rekommenderat):**
+**Alternativ 1: Enkel config (rekommenderat för ngrok v3)**
 ```yaml
 version: 3
 agent:
@@ -244,21 +244,28 @@ endpoints:
     bind_tls: true
 ```
 
-**Eller för äldre ngrok v2 (om v3 inte fungerar):**
+**Alternativ 2: Om du får "error reading configuration file"**
+
+Det kan bero på YAML-syntaxfel. Prova detta enklare format:
+
 ```yaml
-version: 2
-authtoken: DIN_AUTHTOKEN_HÄR
-tunnels:
+version: 3
+agent:
+  authtoken: DIN_AUTHTOKEN_HÄR
+endpoints:
   epa-bridge:
-    addr: 3001
-    proto: http
-    bind_tls: true
+    addr: "3001"
+    proto: "http"
 ```
+
+**Alternativ 3: Använd ngrok utan config-fil (enklast)**
+
+Om config-filen fortsätter ge problem, kan du köra ngrok direkt med kommandoradsargument. Uppdatera systemd service istället (se steg 7.1).
 
 **OBS:** 
 - Ersätt `DIN_AUTHTOKEN_HÄR` med din faktiska authtoken
-- ngrok v3 använder `agent:` och `endpoints:` istället för `tunnels:`
-- Om du får fel med v3-formatet, prova v2-formatet ovan
+- Kontrollera YAML-indentering (använd mellanslag, inte tabs)
+- Efter att ha skapat filen, validera med: `sudo -u epa ngrok config check`
 
 ### 5.5. Skapa script för att hämta ngrok URL
 
@@ -370,8 +377,7 @@ sudo chmod +x /opt/epa-dunk-station/start-kiosk.sh
 sudo nano /etc/systemd/system/ngrok.service
 ```
 
-Lägg till:
-
+**Alternativ 1: Med config-fil (om config-filen fungerar)**
 ```ini
 [Unit]
 Description=Ngrok Tunnel for EPA Serial Bridge
@@ -381,6 +387,7 @@ Requires=epa-bridge.service
 [Service]
 Type=simple
 User=epa
+Environment="HOME=/home/epa"
 ExecStart=/usr/local/bin/ngrok start --all --config /home/epa/.config/ngrok/ngrok.yml
 Restart=always
 RestartSec=10
@@ -391,7 +398,34 @@ StandardError=journal
 WantedBy=multi-user.target
 ```
 
-**OBS:** Sökvägen `/home/epa/.config/ngrok/ngrok.yml` är korrekt för användaren "epa".
+**Alternativ 2: Utan config-fil (om config ger problem)**
+
+Om config-filen ger "error reading configuration file", använd detta istället:
+
+```ini
+[Unit]
+Description=Ngrok Tunnel for EPA Serial Bridge
+After=network.target epa-bridge.service
+Requires=epa-bridge.service
+
+[Service]
+Type=simple
+User=epa
+Environment="HOME=/home/epa"
+Environment="NGROK_AUTHTOKEN=DIN_AUTHTOKEN_HÄR"
+ExecStart=/usr/local/bin/ngrok http 3001 --log stdout
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
+```
+
+**OBS:** 
+- För Alternativ 2, ersätt `DIN_AUTHTOKEN_HÄR` med din faktiska authtoken
+- Eller kör `ngrok config add-authtoken DIN_TOKEN` först så behöver du inte sätta miljövariabeln
 
 ### 7.2. Skapa systemd service för serial bridge
 
@@ -732,6 +766,11 @@ cat /home/epa/.config/ngrok/ngrok.yml
 
 # 8. Validera ngrok config (för v3)
 sudo -u epa ngrok config check
+
+# 9. Om du får "error reading configuration file":
+#    - Kontrollera YAML-syntax (använd mellanslag, inte tabs)
+#    - Kontrollera att filen är korrekt formaterad: cat /home/epa/.config/ngrok/ngrok.yml
+#    - Prova att ta bort config-filen och använd miljövariabel istället (se Alternativ 2 i steg 7.1)
 
 # 8. Kontrollera att serial bridge körs (ngrok behöver den)
 sudo systemctl status epa-bridge.service
