@@ -594,9 +594,31 @@ StandardError=journal
 WantedBy=graphical.target
 ```
 
-**Viktigt:** Om detta fortfarande inte fungerar, prova detta alternativ som använder systemd user session:
+**Viktigt:** Om systemd service inte fungerar trots att scriptet fungerar manuellt, prova detta alternativ:
 
-**Alternativ: Använd systemd user service (rekommenderat för GUI-apps)**
+**Alternativ 1: Använd Desktop Autostart (enklast för GUI-apps)**
+
+Om systemd service inte fungerar, använd desktop autostart istället:
+
+```bash
+sudo -u epa mkdir -p /home/epa/.config/autostart
+sudo -u epa nano /home/epa/.config/autostart/epa-kiosk.desktop
+```
+
+Lägg till:
+```ini
+[Desktop Entry]
+Type=Application
+Name=EPA Kiosk
+Exec=/opt/epa-dunk-station/start-kiosk.sh
+Hidden=false
+NoDisplay=false
+X-GNOME-Autostart-enabled=true
+```
+
+Detta startar automatiskt när epa-användaren loggar in.
+
+**Alternativ 2: Använd systemd user service (om du vill använda systemd)**
 
 ```bash
 # Skapa user service istället
@@ -657,14 +679,32 @@ systemctl --user start epa-kiosk.service
 
 ### 7.4. Aktivera services
 
+**För serial bridge och ngrok (systemd services fungerar bra):**
 ```bash
 sudo systemctl daemon-reload
 sudo systemctl enable epa-bridge.service
 sudo systemctl enable ngrok.service
-sudo systemctl enable epa-kiosk.service
+sudo systemctl start epa-bridge.service
+sudo systemctl start ngrok.service
 ```
 
-**Ordning:** Serial bridge startar först, sedan ngrok, sedan kiosk webbläsare.
+**För kiosk webbläsare - välj ett alternativ:**
+
+**Om du använder systemd service:**
+```bash
+sudo systemctl enable epa-kiosk.service
+sudo systemctl start epa-kiosk.service
+sudo systemctl status epa-kiosk.service
+```
+
+**Om systemd service inte fungerar (rekommenderat), använd Desktop Autostart:**
+```bash
+# Desktop autostart är redan konfigurerad i Alternativ 1 ovan
+# Den startar automatiskt när epa-användaren loggar in
+# Inga extra kommandon behövs!
+```
+
+**Ordning:** Serial bridge startar först, sedan ngrok, sedan kiosk webbläsare (via autostart eller service).
 
 ---
 
@@ -916,8 +956,14 @@ sudo -u epa /opt/epa-dunk-station/start-kiosk.sh
 xhost +local:
 sudo -u epa xset q
 
-# 9. Om scriptet fungerar manuellt men inte via service, kontrollera service-filen
-sudo systemctl cat epa-kiosk.service
+# 9. Om scriptet fungerar manuellt men inte via service:
+#    - Kolla service logs: journalctl -u epa-kiosk.service -n 50
+#    - Kontrollera service-filen: sudo systemctl cat epa-kiosk.service
+#    - Prova Desktop Autostart istället (se steg 7.3 Alternativ 1)
+
+# 10. Om du använder Desktop Autostart, kontrollera:
+ls -la /home/epa/.config/autostart/epa-kiosk.desktop
+cat /home/epa/.config/autostart/epa-kiosk.desktop
 ```
 
 **Vanliga problem:**
