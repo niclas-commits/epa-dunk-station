@@ -416,25 +416,34 @@ window.addEventListener("load", () => {
 
   // Function to set ignition state (used by both manual click and Arduino)
   function setIgnitionState(on) {
-    if (on && !engineOn) {
-      // Start engine
-      engineOn = true;
-      ignitionSound.currentTime = 0;
-      ignitionSound.play();
-      document.getElementById("ignition").style.transform = "rotate(45deg)";
-      setLamp(3, true);
-      setLamp(4, true);
-      generateSong();
-    } else if (!on && engineOn) {
-      // Stop engine
-      engineOn = false;
-      if (currentAudio) currentAudio.pause();
-      stopBlink();
-      stopVU();
-      allLampsOff();
-      document.getElementById("ignition").style.transform = "rotate(0deg)";
-      if (qrCode) qrCode.clear();
-      setStatus("Stoppad.");
+    console.log('setIgnitionState called with:', on, 'current engineOn:', engineOn);
+    
+    // Always set state based on Arduino input, regardless of current state
+    if (on) {
+      // Start engine (only if not already on)
+      if (!engineOn) {
+        engineOn = true;
+        ignitionSound.currentTime = 0;
+        ignitionSound.play();
+        document.getElementById("ignition").style.transform = "rotate(45deg)";
+        setLamp(3, true);
+        setLamp(4, true);
+        generateSong();
+        console.log('Engine started');
+      }
+    } else {
+      // Stop engine (only if currently on)
+      if (engineOn) {
+        engineOn = false;
+        if (currentAudio) currentAudio.pause();
+        stopBlink();
+        stopVU();
+        allLampsOff();
+        document.getElementById("ignition").style.transform = "rotate(0deg)";
+        if (qrCode) qrCode.clear();
+        setStatus("Stoppad.");
+        console.log('Engine stopped');
+      }
     }
   }
 
