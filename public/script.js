@@ -410,34 +410,33 @@ window.addEventListener("load", () => {
 
   ignitionSound = new Audio("/audio/ignition.wav");
 
-  // Tändningsnyckel
+  // Function to set ignition state (used by both manual click and Arduino)
+  function setIgnitionState(on) {
+    if (on && !engineOn) {
+      // Start engine
+      engineOn = true;
+      ignitionSound.currentTime = 0;
+      ignitionSound.play();
+      document.getElementById("ignition").style.transform = "rotate(45deg)";
+      setLamp(3, true);
+      setLamp(4, true);
+      generateSong();
+    } else if (!on && engineOn) {
+      // Stop engine
+      engineOn = false;
+      if (currentAudio) currentAudio.pause();
+      stopBlink();
+      stopVU();
+      allLampsOff();
+      document.getElementById("ignition").style.transform = "rotate(0deg)";
+      if (qrCode) qrCode.clear();
+      setStatus("Stoppad.");
+    }
+  }
+
+  // Tändningsnyckel (manual click - toggle)
   document.getElementById("ignition").addEventListener("click", () => {
-      if (!engineOn) {
-          engineOn = true;
-
-          ignitionSound.currentTime = 0;
-          ignitionSound.play();
-
-          document.getElementById("ignition").style.transform = "rotate(45deg)";
-
-          setLamp(3, true);
-          setLamp(4, true);
-
-          generateSong();
-      } else {
-          engineOn = false;
-
-          if (currentAudio) currentAudio.pause();
-          stopBlink();
-          stopVU();
-          allLampsOff();
-
-          document.getElementById("ignition").style.transform = "rotate(0deg)";
-
-          if (qrCode) qrCode.clear();
-
-          setStatus("Stoppad.");
-      }
+    setIgnitionState(!engineOn);
   });
 
   // Connect to Arduino
