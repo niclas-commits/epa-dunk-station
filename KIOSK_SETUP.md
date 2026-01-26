@@ -101,14 +101,30 @@ sudo -u epa git clone https://DIN_TOKEN@github.com/niclas-commits/epa-dunk-stati
 
 **Alternativ 3: Ladda ner som ZIP**
 ```bash
+# Skapa mappen först
 sudo mkdir -p /opt/epa-dunk-station
 sudo chown epa:epa /opt/epa-dunk-station
+
+# Ladda ner och packa upp
 cd /tmp
 wget https://github.com/niclas-commits/epa-dunk-station/archive/refs/heads/main.zip
 unzip main.zip
-sudo mv epa-dunk-station-main/* /opt/epa-dunk-station/
+
+# Kontrollera att mappen finns
+ls -la epa-dunk-station-main
+
+# Flytta allt innehåll (använd cp istället om mv inte fungerar)
+sudo cp -r epa-dunk-station-main/* /opt/epa-dunk-station/
+sudo cp -r epa-dunk-station-main/.[!.]* /opt/epa-dunk-station/ 2>/dev/null || true
+
+# Sätt rätt ägare
 sudo chown -R epa:epa /opt/epa-dunk-station
+
+# Rensa upp
 rm -rf main.zip epa-dunk-station-main
+
+# Verifiera att filerna är på plats
+ls -la /opt/epa-dunk-station/
 ```
 
 ### 3.3. Installera dependencies
@@ -487,13 +503,50 @@ När ngrok startar, behöver du uppdatera Railway med ngrok WebSocket URL:en.
 
 Efter att ngrok har startat:
 
+**Först, kontrollera att ngrok körs:**
 ```bash
-# Kolla ngrok status
+# Kontrollera om ngrok service körs
+sudo systemctl status ngrok.service
+
+# Om den inte körs, starta den
+sudo systemctl start ngrok.service
+
+# Kolla ngrok process
+ps aux | grep ngrok
+
+# Kontrollera att ngrok lyssnar på port 4040
+netstat -tuln | grep 4040
+# Eller
+ss -tuln | grep 4040
+```
+
+**Om ngrok körs, hämta URL:**
+```bash
+# Kolla ngrok status (vänta några sekunder om ngrok precis startat)
+sleep 3
 curl http://localhost:4040/api/tunnels | jq '.tunnels[0].public_url'
+
+# Om jq inte är installerat, använd detta istället:
+curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io' | head -1
 
 # Eller använd scriptet
 /opt/epa-dunk-station/get-ngrok-url.sh
 cat /tmp/ngrok-ws-url.txt
+```
+
+**Om du fortfarande får "Couldn't connect to server":**
+```bash
+# 1. Kontrollera ngrok logs
+sudo journalctl -u ngrok.service -n 50
+
+# 2. Testa att starta ngrok manuellt för att se felmeddelanden
+sudo -u epa ngrok start --all --config /home/epa/.config/ngrok/ngrok.yml
+
+# 3. Kontrollera att config-filen finns och är korrekt
+cat /home/epa/.config/ngrok/ngrok.yml
+
+# 4. Kontrollera att serial bridge körs (ngrok behöver den)
+sudo systemctl status epa-bridge.service
 ```
 
 Du får en URL som `https://abc123.ngrok.io` - konvertera till WebSocket: `wss://abc123.ngrok.io`
@@ -633,10 +686,45 @@ chromium-browser --kiosk https://din-app.up.railway.app
 
 - Kontrollera att serial bridge körs: `systemctl status epa-bridge.service`
 - Kontrollera att ngrok körs: `systemctl status ngrok.service`
-- Kontrollera ngrok URL: `curl http://localhost:4040/api/tunnels | jq`
 - Kontrollera att `ARDUINO_WS_URL` är korrekt satt på Railway (ska vara `wss://din-ngrok-url.ngrok.io`)
 - Kontrollera port 3001: `netstat -tuln | grep 3001`
 - Kolla logs: `journalctl -u epa-bridge.service -n 50` och `journalctl -u ngrok.service -n 50`
+
+### "Couldn't connect to server" när du försöker hämta ngrok URL
+
+Om `curl http://localhost:4040/api/tunnels` ger "Couldn't connect to server":
+
+```bash
+# 1. Kontrollera om ngrok service körs
+sudo systemctl status ngrok.service
+
+# 2. Om den inte körs, starta den
+sudo systemctl start ngrok.service
+
+# 3. Vänta några sekunder för att ngrok ska starta
+sleep 5
+
+# 4. Kontrollera ngrok logs för fel
+sudo journalctl -u ngrok.service -n 50
+
+# 5. Kontrollera att ngrok process körs
+ps aux | grep ngrok
+
+# 6. Testa att starta ngrok manuellt för att se felmeddelanden
+sudo -u epa ngrok start --all --config /home/epa/.config/ngrok/ngrok.yml
+
+# 7. Kontrollera att config-filen finns och är korrekt
+cat /home/epa/.config/ngrok/ngrok.yml
+
+# 8. Kontrollera att serial bridge körs (ngrok behöver den)
+sudo systemctl status epa-bridge.service
+```
+
+**Vanliga problem:**
+- Ngrok service har inte startat → `sudo systemctl start ngrok.service`
+- Ngrok config-fil saknas eller är felaktig → kontrollera `/home/epa/.config/ngrok/ngrok.yml`
+- Serial bridge körs inte → ngrok kan inte ansluta till port 3001
+- Ngrok authtoken är ogiltig → kontrollera token på ngrok dashboard
 
 ### Arduino hittas inte
 
