@@ -623,12 +623,37 @@ WantedBy=default.target
 ```
 
 Aktivera user service:
+
+**Viktigt:** Du måste vara inloggad som epa-användaren eller använda `su` för att köra user services:
+
 ```bash
-sudo -u epa systemctl --user enable epa-kiosk.service
-sudo -u epa systemctl --user start epa-kiosk.service
+# Alternativ 1: Logga in som epa-användaren
+su - epa
+systemctl --user daemon-reload
+systemctl --user enable epa-kiosk.service
+systemctl --user start epa-kiosk.service
+systemctl --user status epa-kiosk.service
+exit
+
+# Alternativ 2: Om du får "Failed to connect to bus", använd machinectl
+sudo machinectl shell epa@ /bin/bash
+systemctl --user daemon-reload
+systemctl --user enable epa-kiosk.service
+systemctl --user start epa-kiosk.service
+exit
+
+# Alternativ 3: Aktivera linger så user services körs även utan inloggad session
+sudo loginctl enable-linger epa
+# Sedan logga in som epa och köra:
+systemctl --user daemon-reload
+systemctl --user enable epa-kiosk.service
+systemctl --user start epa-kiosk.service
 ```
 
-**OBS:** User services körs automatiskt när användaren loggar in, vilket är perfekt för GUI-applikationer.
+**OBS:** 
+- User services körs automatiskt när användaren loggar in
+- Om du får "Failed to connect to bus", måste du logga in som epa-användaren först
+- `loginctl enable-linger` låter user services köra även utan aktiv session
 
 ### 7.4. Aktivera services
 
