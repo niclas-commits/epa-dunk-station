@@ -359,8 +359,22 @@ Om du använder `chromium` istället för `chromium-browser`, uppdatera `start-k
 
 ### 6.2. Skapa kiosk startup script
 
+**Om filen redan finns och du inte kan spara:**
+
 ```bash
-sudo nano /opt/epa-dunk-station/start-kiosk.sh
+# Kontrollera ägare och behörigheter
+ls -la /opt/epa-dunk-station/start-kiosk.sh
+
+# Om filen ägs av root, ändra ägare till epa
+sudo chown epa:epa /opt/epa-dunk-station/start-kiosk.sh
+
+# Eller skapa filen direkt som epa-användare
+sudo -u epa nano /opt/epa-dunk-station/start-kiosk.sh
+```
+
+**Om filen inte finns, skapa den:**
+```bash
+sudo -u epa nano /opt/epa-dunk-station/start-kiosk.sh
 ```
 
 Lägg till:
@@ -415,10 +429,18 @@ fi
 echo "✅ Chromium startad i kiosk-läge"
 ```
 
-Gör scriptet körbart:
+Gör scriptet körbart och sätt rätt ägare:
 
 ```bash
+# Sätt ägare till epa
+sudo chown epa:epa /opt/epa-dunk-station/start-kiosk.sh
+
+# Gör scriptet körbart
 sudo chmod +x /opt/epa-dunk-station/start-kiosk.sh
+
+# Verifiera
+ls -la /opt/epa-dunk-station/start-kiosk.sh
+# Bör visa: -rwxr-xr-x 1 epa epa ...
 ```
 
 ---
