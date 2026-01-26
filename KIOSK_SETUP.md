@@ -359,6 +359,16 @@ Om du använder `chromium` istället för `chromium-browser`, uppdatera `start-k
 
 ### 6.2. Skapa kiosk startup script
 
+**Viktigt: Stoppa servicen först om den körs:**
+
+```bash
+# Stoppa servicen om den körs
+sudo systemctl stop epa-kiosk.service
+
+# Kontrollera att den är stoppad
+sudo systemctl status epa-kiosk.service
+```
+
 **Om filen redan finns och du inte kan spara:**
 
 ```bash
@@ -375,6 +385,18 @@ sudo -u epa nano /opt/epa-dunk-station/start-kiosk.sh
 **Om filen inte finns, skapa den:**
 ```bash
 sudo -u epa nano /opt/epa-dunk-station/start-kiosk.sh
+```
+
+**Efter att du sparat filen:**
+```bash
+# Sätt rätt behörigheter
+sudo chown epa:epa /opt/epa-dunk-station/start-kiosk.sh
+sudo chmod +x /opt/epa-dunk-station/start-kiosk.sh
+
+# Starta om servicen för att testa
+sudo systemctl daemon-reload
+sudo systemctl start epa-kiosk.service
+sudo systemctl status epa-kiosk.service
 ```
 
 Lägg till:
@@ -797,29 +819,35 @@ sudo -u epa npm run bridge
 ### Webbläsare öppnas inte
 
 ```bash
-# 1. Kolla att X11/display fungerar
+# 1. Stoppa servicen först (viktigt!)
+sudo systemctl stop epa-kiosk.service
+
+# 2. Kolla att X11/display fungerar
 echo $DISPLAY
 
-# 2. Om tom, sätt display manuellt
+# 3. Om tom, sätt display manuellt
 export DISPLAY=:0
 
-# 3. Kolla att X11 körs
+# 4. Kolla att X11 körs
 pgrep -x Xorg
 
-# 4. Testa att starta Chromium manuellt (ersätt med din Railway URL)
+# 5. Testa att starta Chromium manuellt (ersätt med din Railway URL)
 chromium-browser --kiosk https://din-app.up.railway.app
 # ELLER om det inte fungerar:
 chromium --kiosk https://din-app.up.railway.app
 
-# 5. Om scriptet inte fungerar, kolla logs
+# 6. Om scriptet inte fungerar, kolla logs
 journalctl -u epa-kiosk.service -n 50
 
-# 6. Testa scriptet manuellt
+# 7. Testa scriptet manuellt (efter att servicen är stoppad)
 sudo -u epa /opt/epa-dunk-station/start-kiosk.sh
 
-# 7. Kontrollera X11-behörigheter
+# 8. Kontrollera X11-behörigheter
 xhost +local:
 sudo -u epa xset q
+
+# 9. Om scriptet fungerar manuellt men inte via service, kontrollera service-filen
+sudo systemctl cat epa-kiosk.service
 ```
 
 **Vanliga problem:**
