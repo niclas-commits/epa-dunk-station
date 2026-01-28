@@ -397,7 +397,7 @@ function connectArduino() {
   
   arduinoWS.onopen = () => {
     console.log('✅ Connected to Arduino bridge');
-    setStatus("Arduino ansluten! Justera visarna – vrid nyckeln för EPA-dunk!");
+    setStatus("Justera visarna – vrid nyckeln för EPA-dunk!");
   };
   
   arduinoWS.onmessage = (event) => {
