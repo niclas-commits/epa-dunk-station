@@ -252,12 +252,36 @@ function setStatus(msg) {
   if (el) el.textContent = msg;
 }
 
+// Function to stop engine (called when song ends)
+function stopEngine() {
+  if (!engineOn) return;
+  
+  engineOn = false;
+  if (currentAudio) currentAudio.pause();
+  stopBlink();
+  stopVU();
+  allLampsOff();
+  const ignitionEl = document.getElementById("ignition");
+  if (ignitionEl) ignitionEl.style.transform = "rotate(0deg)";
+  if (qrCode) qrCode.clear();
+  setStatus("Stoppad.");
+  console.log('Engine stopped');
+  
+  // Reset status message after 5 seconds
+  if (statusTimeout) clearTimeout(statusTimeout);
+  statusTimeout = setTimeout(() => {
+    setStatus("Justera visarna – vrid nyckeln för EPA-dunk!");
+    statusTimeout = null;
+  }, 5000);
+}
+
 // Function to set ignition state (used by both manual click and Arduino)
 // Must be defined before connectArduino() is called
 function setIgnitionState(on) {
   console.log('setIgnitionState called with:', on, 'current engineOn:', engineOn);
   
-  // Always set state based on Arduino input, regardless of current state
+  // Only handle ignition=true (pulse to start)
+  // Ignore ignition=false - engine stops automatically when song ends
   if (on) {
     // Start engine (only if not already on)
     if (!engineOn) {
@@ -278,27 +302,6 @@ function setIgnitionState(on) {
       setLamp(4, true);
       generateSong();
       console.log('Engine started');
-    }
-  } else {
-    // Stop engine (only if currently on)
-    if (engineOn) {
-      engineOn = false;
-      if (currentAudio) currentAudio.pause();
-      stopBlink();
-      stopVU();
-      allLampsOff();
-      const ignitionEl = document.getElementById("ignition");
-      if (ignitionEl) ignitionEl.style.transform = "rotate(0deg)";
-      if (qrCode) qrCode.clear();
-      setStatus("Stoppad.");
-      console.log('Engine stopped');
-      
-      // Reset status message after 5 seconds
-      if (statusTimeout) clearTimeout(statusTimeout);
-      statusTimeout = setTimeout(() => {
-        setStatus("Justera visarna – vrid nyckeln för EPA-dunk!");
-        statusTimeout = null;
-      }, 5000);
     }
   }
 }
@@ -328,7 +331,8 @@ async function generateSong() {
   }
 
     const audio = new Audio(data.audioUrl);
-    audio.loop = true;
+    // Don't loop - let song play once and then stop engine
+    audio.loop = false;
 
     // If loading the returned `audioUrl` fails (CORS/S3/old DB rows),
     // try the `publicUrl` as a fallback.
@@ -348,7 +352,11 @@ async function generateSong() {
 
   // ensure needles stop/reset when playback ends or is paused
   audio.addEventListener("pause", () => stopVU());
-  audio.addEventListener("ended", () => stopVU());
+  // When song ends, stop the entire engine
+  audio.addEventListener("ended", () => {
+    stopVU();
+    stopEngine();
+  });
 
   if (!engineOn) {
       setStatus("Låt klar – men motorn är av.");
@@ -428,9 +436,12 @@ function connectArduino() {
         } else if (data.name === 'dist') {
           setButtonState("btn_dist", "distOn", pressed);
         } else if (data.name === 'ignition') {
-          // Ignition: pressed = start (true), released = stop (false)
-          console.log('Ignition button - Setting ignition state to:', pressed, 'current engineOn:', engineOn);
-          setIgnitionState(pressed);
+          // Ignition: only handle press (true) to start - ignore release (false)
+          // Engine stops automatically when song ends
+          if (pressed) {
+            console.log('Ignition button pressed - Starting engine');
+            setIgnitionState(true);
+          }
         } else {
           console.warn('Unknown button name:', data.name);
         }
@@ -474,9 +485,11 @@ window.addEventListener("load", () => {
 
   ignitionSound = new Audio("/audio/ignition.wav");
 
-  // Tändningsnyckel (manual click - toggle)
+  // Tändningsnyckel (manual click - start if not already running)
   document.getElementById("ignition").addEventListener("click", () => {
-    setIgnitionState(!engineOn);
+    if (!engineOn) {
+      setIgnitionState(true);
+    }
   });
 
   // Connect to Arduino
