@@ -381,6 +381,72 @@ async function generateSong() {
 //  A R D U I N O  W E B S O C K E T
 // ==========================================================
 let arduinoWS = null;
+let arduinoPollTimer = null;
+let lastArduinoRelaySeq = 0;
+let lastIgnitionPressed = false;
+
+function applyArduinoRelayState(stateData) {
+  if (!stateData) return;
+
+  const gauges = stateData.gauges || {};
+  if (typeof gauges.tempo === "number") {
+    gaugeValues.tempo = gauges.tempo;
+    setNeedle("tempo");
+  }
+  if (typeof gauges.typ === "number") {
+    gaugeValues.typ = gauges.typ;
+    setNeedle("typ");
+  }
+  if (typeof gauges.energi === "number") {
+    gaugeValues.energi = gauges.energi;
+    setNeedle("energi");
+  }
+  if (typeof gauges.trummor === "number") {
+    gaugeValues.trummor = gauges.trummor;
+    setNeedle("trummor");
+  }
+
+  const buttons = stateData.buttons || {};
+  const bassPressed = buttons.bassPlus === true;
+  const distPressed = buttons.dist === true;
+  const ignitionPressed = buttons.ignition === true;
+
+  setButtonState("btn_bassplus", "bassPlusOn", bassPressed);
+  setButtonState("btn_dist", "distOn", distPressed);
+
+  // Pulse behavior: only react to rising edge for ignition.
+  if (ignitionPressed && !lastIgnitionPressed) {
+    setIgnitionState(true);
+  }
+  lastIgnitionPressed = ignitionPressed;
+}
+
+function startArduinoRelayPolling() {
+  if (arduinoPollTimer) return;
+
+  console.log("🔄 Using Railway relay polling for Arduino input");
+  setStatus("Ansluter till Arduino via server...");
+
+  const poll = async () => {
+    try {
+      const res = await fetch("/api/arduino-state", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      if (!data.ok || !data.state) return;
+
+      const seq = Number(data.state.seq || 0);
+      if (seq > lastArduinoRelaySeq) {
+        lastArduinoRelaySeq = seq;
+        applyArduinoRelayState(data.state);
+      }
+    } catch (error) {
+      console.warn("⚠️ Relay polling failed:", error?.message || error);
+    }
+  };
+
+  poll();
+  arduinoPollTimer = setInterval(poll, 200);
+}
 
 function connectArduino() {
   // Try to connect to WebSocket bridge
@@ -390,6 +456,11 @@ function connectArduino() {
   
   // Check if there's a configured Arduino WebSocket URL (for tunnel setups)
   const configuredUrl = document.documentElement.dataset.arduinoWsUrl;
+  if (!configuredUrl) {
+    startArduinoRelayPolling();
+    return;
+  }
+
   if (configuredUrl) {
     wsUrl = configuredUrl;
   } else {

@@ -18,6 +18,7 @@ const { Pool } = require("pg");
 // ==========================================================
 const app = express();
 const PORT = process.env.PORT || 3000;
+const ARDUINO_RELAY_TOKEN = process.env.ARDUINO_RELAY_TOKEN || "";
 
 // ==========================================================
 //  STATIC FILE DIRS
@@ -29,6 +30,61 @@ app.use(express.json({ limit: "2mb" }));
 
 // Serve static files (except index.html which we'll handle specially)
 app.use(express.static(PUBLIC_DIR, { index: false }));
+
+// ==========================================================
+//  ARDUINO RELAY STATE (for locked-down networks)
+// ==========================================================
+const arduinoRelayState = {
+  gauges: { tempo: 50, typ: 50, energi: 50, trummor: 50 },
+  buttons: { bassPlus: false, dist: false, ignition: false },
+  updatedAt: null,
+  seq: 0
+};
+
+function clampGauge(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return 50;
+  return Math.max(0, Math.min(100, Math.round(n)));
+}
+
+app.post("/api/arduino-relay", (req, res) => {
+  if (!ARDUINO_RELAY_TOKEN) {
+    return res.status(503).json({ ok: false, error: "Relay token not configured" });
+  }
+
+  const token = req.get("x-arduino-relay-token");
+  if (token !== ARDUINO_RELAY_TOKEN) {
+    return res.status(401).json({ ok: false, error: "Unauthorized" });
+  }
+
+  const payload = req.body?.state ?? req.body;
+  if (!payload || typeof payload !== "object") {
+    return res.status(400).json({ ok: false, error: "Missing relay state payload" });
+  }
+
+  const gauges = payload.gauges || {};
+  const buttons = payload.buttons || {};
+
+  arduinoRelayState.gauges.tempo = clampGauge(gauges.tempo ?? arduinoRelayState.gauges.tempo);
+  arduinoRelayState.gauges.typ = clampGauge(gauges.typ ?? arduinoRelayState.gauges.typ);
+  arduinoRelayState.gauges.energi = clampGauge(gauges.energi ?? arduinoRelayState.gauges.energi);
+  arduinoRelayState.gauges.trummor = clampGauge(gauges.trummor ?? arduinoRelayState.gauges.trummor);
+
+  arduinoRelayState.buttons.bassPlus = !!buttons.bassPlus;
+  arduinoRelayState.buttons.dist = !!buttons.dist;
+  arduinoRelayState.buttons.ignition = !!buttons.ignition;
+  arduinoRelayState.updatedAt = new Date().toISOString();
+  arduinoRelayState.seq += 1;
+
+  res.json({ ok: true, seq: arduinoRelayState.seq });
+});
+
+app.get("/api/arduino-state", (req, res) => {
+  res.json({
+    ok: true,
+    state: arduinoRelayState
+  });
+});
 
 // Serve index.html with injected Arduino WebSocket URL
 app.get('/', (req, res) => {
