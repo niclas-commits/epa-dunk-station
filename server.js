@@ -421,6 +421,41 @@ async function findSimilarSong(payload) {
     return result.rows[0] || null;
 }
 
+/**
+ * When Stable Audio fails (credits, outage, etc.), reuse any stored track so the visitor still hears music.
+ */
+async function findFallbackSongFromDb(payload) {
+    const r1 = await pool.query(
+        `SELECT *
+         FROM songs
+         WHERE bass_plus = $1 AND dist = $2
+         AND (
+           (audio_url IS NOT NULL AND audio_url <> '')
+           OR (public_url IS NOT NULL AND public_url <> '')
+         )
+         ORDER BY created_at DESC
+         LIMIT 1`,
+        [payload.bassPlus, payload.dist]
+    );
+    if (r1.rows[0]) return r1.rows[0];
+
+    const r2 = await pool.query(
+        `SELECT *
+         FROM songs
+         WHERE (audio_url IS NOT NULL AND audio_url <> '')
+            OR (public_url IS NOT NULL AND public_url <> '')
+         ORDER BY created_at DESC
+         LIMIT 1`
+    );
+    return r2.rows[0] || null;
+}
+
+function rowToAudioResponse(row) {
+    const audioUrl = row.audio_url || row.public_url || null;
+    const publicUrl = row.public_url || audioUrl;
+    return { audioUrl, publicUrl };
+}
+
 
 // ==========================================================
 //  DB: SAVE NEW SONG
@@ -508,17 +543,42 @@ console.log("🔥 PAYLOAD (fixad):", payload);
             });
         }
 
-        const promptText = buildStablePrompt(payload);
-        const bass = describeBass(
-            payload.energi,
-            payload.typ,
-            payload.bassPlus,
-            payload.dist
-        );
+        let relUrl;
+        let publicUrl;
+        try {
+            const out = await generateSongWithStableAudio(payload);
+            relUrl = out.relUrl;
+            publicUrl = out.publicUrl;
+            await saveSongToDB(payload, relUrl, publicUrl);
+        } catch (saErr) {
+            console.warn("⚠️ Stable Audio misslyckades (t.ex. slut på krediter) — försöker fallback:", saErr.message);
 
-        const { relUrl, publicUrl } = await generateSongWithStableAudio(payload);
+            const fallbackRow = await findFallbackSongFromDb(payload);
+            if (fallbackRow) {
+                const urls = rowToAudioResponse(fallbackRow);
+                if (urls.audioUrl) {
+                    console.log("✅ Fallback: återanvänder sparad låt från databasen (id=" + fallbackRow.id + ")");
+                    return res.json({
+                        success: true,
+                        audioUrl: urls.audioUrl,
+                        publicUrl: urls.publicUrl
+                    });
+                }
+            }
 
-        await saveSongToDB(payload, relUrl, publicUrl, bass);
+            const staticAudio = process.env.FALLBACK_AUDIO_URL;
+            if (staticAudio) {
+                const staticPublic = process.env.FALLBACK_PUBLIC_URL || staticAudio;
+                console.log("✅ Fallback: statisk låt från FALLBACK_AUDIO_URL");
+                return res.json({
+                    success: true,
+                    audioUrl: staticAudio,
+                    publicUrl: staticPublic
+                });
+            }
+
+            throw saErr;
+        }
 
         res.json({ success: true, audioUrl: relUrl, publicUrl });
 
