@@ -230,13 +230,7 @@ function stopVU() {
     setNeedle(group);
   });
 
-  // reset the two switches to false and update their button images
-  state.bassPlusOn = false;
-  state.distOn = false;
-  const btnBass = document.getElementById("btn_bassplus");
-  if (btnBass) btnBass.src = `/images/button1_off.jpg`;
-  const btnDist = document.getElementById("btn_dist");
-  if (btnDist) btnDist.src = `/images/button2_off.jpg`;
+  // Bass+ / Dist lämnas oförändrade så nästa start använder samma val (payload byggs från state).
 }
 
 // ==========================================================
