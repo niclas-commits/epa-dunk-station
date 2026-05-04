@@ -778,53 +778,60 @@ sudo systemctl status epa-bridge.service
 
 Du får en URL som `https://abc123.ngrok.io` - konvertera till WebSocket: `wss://abc123.ngrok.io`
 
-### 10.2. Uppdatera Railway
+### 10.2. Uppdatera Railway (manuellt – rekommenderat)
 
-1. Gå till Railway → ditt projekt → Variables
-2. Lägg till eller uppdatera:
-   - **Variabel:** `ARDUINO_WS_URL`
-   - **Värde:** `wss://din-ngrok-url.ngrok.io`
+Railway visar **inte** något "Variable ID" i webbgränssnittet. Du behöver det inte för manuell uppdatering.
 
-**OBS:** Om ngrok-URL:en ändras (vid restart), måste du uppdatera Railway manuellt. För automatisk uppdatering, se avsnittet om Railway API nedan.
+1. Gå till [railway.app](https://railway.app) → ditt projekt → välj **din app-service** (inte databasen).
+2. Öppna fliken **Variables** (eller **Settings** → Variables).
+3. Lägg till eller redigera en variabel:
+   - **Namn:** `ARDUINO_WS_URL`
+   - **Värde:** `wss://din-ngrok-url.ngrok.io` (ersätt med din ngrok-URL, med `wss://`).
+4. Spara. Railway deployar om vid behov.
+
+**OBS:** Om ngrok-URL:en ändras (t.ex. vid omstart av ngrok), uppdatera värdet för `ARDUINO_WS_URL` här igen. För automatisk uppdatering, se nedan.
 
 ### 10.3. Automatisk uppdatering (valfritt)
 
-För att automatiskt uppdatera Railway när ngrok startar, skapa ett script:
+Railway använder **GraphQL API** – det finns inget "Variable ID". Du identifierar variabeln med **namn** (`ARDUINO_WS_URL`) och behöver **Project ID**, **Environment ID** och **Service ID** (din webbapp).
+
+**Var hittar jag ID:n i Railway?**
+
+- **Project ID:** Öppna projektet → **Settings** → **General** → "Project ID", eller från URL:en när du är i projektet (t.ex. `…/project/abc-123-def` → `abc-123-def`).
+- **Environment ID:** Välj miljö (t.ex. "Production") → ofta syns i URL eller under **Settings** för miljön.
+- **Service ID:** Klicka på din app-service (Node-appen) → **Settings** → "Service ID" eller från URL:en.
+
+Skapa ett script (ersätt med dina värden):
 
 ```bash
 nano /opt/epa-dunk-station/update-railway-url.sh
 ```
 
-Lägg till (ersätt med dina värden):
-
 ```bash
 #!/bin/bash
 
-# Vänta på ngrok
 sleep 10
 
-# Hämta ngrok URL
 NGROK_URL=$(curl -s http://localhost:4040/api/tunnels | grep -o 'https://[^"]*\.ngrok\.io' | head -1)
 WS_URL=$(echo "$NGROK_URL" | sed 's|https://|wss://|')
 
-# Uppdatera Railway via API (kräver Railway API token)
+# Railway GraphQL API – inget Variable ID, använd variableUpsert
 RAILWAY_TOKEN="din_railway_api_token"
-RAILWAY_PROJECT_ID="ditt_project_id"
-VARIABLE_ID="variable_id_för_ARDUINO_WS_URL"
+PROJECT_ID="ditt_project_id"
+ENVIRONMENT_ID="ditt_environment_id"
+SERVICE_ID="ditt_service_id"
 
-curl -X PATCH "https://api.railway.app/v1/variables/$VARIABLE_ID" \
+curl -s -X POST "https://backboard.railway.com/graphql/v2" \
   -H "Authorization: Bearer $RAILWAY_TOKEN" \
   -H "Content-Type: application/json" \
-  -d "{\"value\":\"$WS_URL\"}"
+  -d "{\"query\":\"mutation variableUpsert($input: VariableUpsertInput!) { variableUpsert(input: $input) }\",\"variables\":{\"input\":{\"projectId\":\"$PROJECT_ID\",\"environmentId\":\"$ENVIRONMENT_ID\",\"serviceId\":\"$SERVICE_ID\",\"name\":\"ARDUINO_WS_URL\",\"value\":\"$WS_URL\"}}}"
 
 echo "✅ Railway uppdaterad med: $WS_URL"
 ```
 
-**För att hitta VARIABLE_ID:**
-```bash
-curl -H "Authorization: Bearer $RAILWAY_TOKEN" \
-  "https://api.railway.app/v1/projects/$RAILWAY_PROJECT_ID/variables" | jq
-```
+Gör scriptet körbart: `chmod +x /opt/epa-dunk-station/update-railway-url.sh`
+
+**API-token:** Railway → **Account** (klicka på din profil) → **Settings** → **Tokens** → skapa en token med rätt behörighet.
 
 ---
 
