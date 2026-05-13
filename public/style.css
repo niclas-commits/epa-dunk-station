@@ -186,6 +186,8 @@ html, body {
     cursor: pointer;
     transition: transform 0.2s ease-out;
     z-index: 500;
+    opacity: 0;
+    pointer-events: none;
 }
 
 #ignition:hover {
